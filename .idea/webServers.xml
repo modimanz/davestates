@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="3dd61520-2c61-4216-8319-3b33dcd616f3" name="LocalDavestates" url="http://localhost">
+        <fileTransfer mountedRoot="/var/www/wordpress/wp-content/plugins/davestates" accessType="MOUNT" />
+      </webServer>
+    </option>
+  </component>
+</project>
