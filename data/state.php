@@ -25,7 +25,7 @@ class DaveStates_List extends WP_List_Table {
    * @param int $page_number
    * @return mixed
    */
-  public static function get_states($per_page = 10, $page_number = 1) {
+  public static function get_states($per_page = 100, $page_number = 1) {
     global $wpdb;
 
     $sql = "SELECT * FROM {$wpdb->prefix}davestates";

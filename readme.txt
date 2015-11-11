@@ -15,8 +15,12 @@ Generates a state link for each data catagory.   This plugin will allow users to
  csv file as data subcategories for state catagory pages.
 
 
-
-
+== Files ==
+davestates.php - Main module files calling all components
+statemap.php - Statemap related functions
+data/state.php - State class and functions for USA States
+data/datagroup - Statemap Data Groups class and functions
+data/data - Statemap Data class and functions
 
 
 TODO FINISH

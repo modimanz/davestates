@@ -18,10 +18,9 @@ defined( 'ABSPATH' ) or die( 'Action not allowed bub.' );
 // Include Install Functions
 include( plugin_dir_path( __FILE__ ) . 'install.php');
 
-
 // Include Database Object Functions
-include( plugin_dir_path( __FILE__ ) . 'data.php');
-
+include( plugin_dir_path( __FILE__ ) . 'data/state.php');
+//include( plugin_dir_path( __FILE__ ) . 'data/categories.php');
 
 // Include Settings Pages
 include( plugin_dir_path( __FILE__ ) . 'settings.php');
@@ -169,4 +168,39 @@ function davestate_import_csv($file, $type, $subcat, $overwrite = false) {
   }
 
   return $status;
+}
+
+/**
+ * Gets a list of states as a wp
+ *
+ */
+function davestates_get_states() {
+
+  $states = wp_cache_get('davesstates_states','davestates');
+  if ( false == $states ) {
+    $states = DaveStates_List::get_states();
+    wp_cache_add('davestates_states', $states, 'davestates');
+  }
+
+  return $states;
+}
+
+/**
+ * Returns State as a query row
+ *
+ * @param $state
+ * @return mixed
+ */
+function davestates_get_state($state) {
+
+  $states = davestates_get_states();
+
+  // If 2 characters then this is a statecode
+  $field = (strlen((trim($state)) == 2 )) ? "statecode" : "name";
+
+  foreach( $states as $key => $row) {
+    if ($row->${field} == $state ) {
+      return $row;
+    }
+  }
 }
