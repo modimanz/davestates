@@ -177,6 +177,7 @@ function davestate_import_csv($file, $type, $subcat, $overwrite = false) {
 function davestates_get_states() {
 
   $states = wp_cache_get('davesstates_states','davestates');
+  $states = false;
   if ( false == $states ) {
     $states = DaveStates_List::get_states();
     wp_cache_add('davestates_states', $states, 'davestates');
@@ -199,8 +200,10 @@ function davestates_get_state($state) {
   $field = (strlen((trim($state)) == 2 )) ? "statecode" : "name";
 
   foreach( $states as $key => $row) {
-    if ($row->${field} == $state ) {
+    if (strtolower($row[$field]) == strtolower($state) ) {
       return $row;
     }
   }
+
+  return array("statecode" => "Not Found: ->".$state, "name" => "Not Found");
 }

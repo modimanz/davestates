@@ -6,7 +6,7 @@ defined( 'ABSPATH' ) or die( 'Action not allowed bub.' );
 
 // Data Structure
 global $davestates_db_version;
-$davestates_db_version = '1.0';
+$davestates_db_version = '1.2';
 
 //  Table: statecategories - Categories of state page data
 //    fields:   id
@@ -50,7 +50,7 @@ function davestates_install() {
   }
   */
 
-  require_once( ABSPATH . 'wp-admin/includes/upgrades.php');
+  require_once( ABSPATH . 'wp-admin/includes/upgrade.php');
 
   $charset_collate = $wpdb->get_charset_collate();
 
@@ -64,47 +64,27 @@ function davestates_install() {
     ) $charset_collate;";
   dbDelta( $states_sql);
 
-  // State Categories // USING POST TYPE INSTEAD
-  /**$cat_table_name = $wpdb->prefix . 'davestatescategories';
-  $cat_sql = "CREATE TABLE $cat_table_name (
-    id mediumint(9) NOT NULL AUTO_INCREMENT,
-    name tinytext NOT NULL,
-    description text NOT NULL,
-    url tinytext NOT NULL,
-    UNIQUE KEY id (id)
-    ) $charset_collate;";
-  dbDelta( $cat_sql);**/
-
   // StateMap Categories  // Previously Called Subcategories
-  $cat_table_name = $wpdb->prefix . 'davestatescategories';
+  $cat_table_name = $wpdb->prefix . 'davestatescategory';
   $cat_sql = "CREATE TABLE $cat_table_name (
     id mediumint(9) NOT NULL AUTO_INCREMENT,
-    categoryid mediumint(9) NOT NULL,
     headers blob NOT NULL,
     active tinyint(1) DEFAULT 0,
-    FOREIGN KEY (categoryid) REFERENCES $cat_table_name (id) ON DELETE CASCADE,
     UNIQUE KEY id (id)
     ) $charset_collate;";
-  //     fields:  id
-  //              categoryid - integer category id
-  //              headers - blob - integer key array of header names
-  //              active - boolean - is this subcat activ
   dbDelta( $cat_sql);
 
   // State Data
   $data_table_name = $wpdb->prefix . 'davestatesdata';
   $data_sql = "CREATE TABLE $data_table_name (
     id mediumint(9) NOT NULL AUTO_INCREMENT,
-    catid mediumint(9) NOT NULL,
+    categoryid mediumint(9) NOT NULL,
     stateid mediumint(9) NOT NULL,
     data blob NOT NULL,
-    FOREIGN KEY (subcatid) REFERENCES $subcat_table_name (id) ON DELETE CASCADE,
+    FOREIGN KEY (categoryid) REFERENCES $cat_table_name (id) ON DELETE CASCADE,
     FOREIGN KEY (stateid) REFERENCES $states_table_name (id) ON DELETE CASCADE,
     UNIQUE KEY id (id)
     ) $charset_collate;";
-  //    fields:   id
-  //              subcatid - integer sub category id
-  //              data - blob - integer key (column) array of subcat data / row
   dbDelta( $data_sql);
 
   add_option( 'davestates_db_version', $davestates_db_version);
@@ -178,3 +158,14 @@ $wpdb->query("INSERT INTO $table_name
 
 register_activation_hook( __FILE__, 'davestates_install');
 register_activation_hook( __FILE__, 'davestates_install_data');
+
+function davestates_update_db_check() {
+  global $davestates_db_version;
+
+  if ( get_site_option('davestates_db_version') != $davestates_db_version) {
+    davestates_install_data();
+  }
+
+  update_option( 'davestates_db_version', $davestates_db_version);
+}
+add_action('plugins_loaded', 'davestates_update_db_check');

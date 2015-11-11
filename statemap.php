@@ -14,6 +14,9 @@ function davestates_create_statemap() {
     global $wp_rewrite;
     //add_post_type_support()
 
+    // Add rewrite Tag
+    add_rewrite_tag('%state%','([^&]+)');
+
     register_post_type( 'davestates_statemap',
         array(
             'labels' => array(
@@ -98,7 +101,7 @@ add_action('wp_enqueue_scripts', 'davestates_statemap_enqueue_scripts');
 
 // TODO Use Shortcode to ad the statemap at the top of the page
 // TODO Use Shortcode to return the statemap data when a state is selected
-function davestates_statemap_shortcode($atts, $content = null) {
+/**function davestates_statemap_shortcode($atts, $content = null) {
     ob_start();
     ?>
     <div class="entry-content">
@@ -108,6 +111,7 @@ function davestates_statemap_shortcode($atts, $content = null) {
     return ob_get_clean();
 }
 add_shortcode('davestates-statemap', 'davestates_statemap_shortcode');
+**/
 
 function davestates_statemap_content($content) {
 
@@ -124,6 +128,28 @@ function davestates_statemap_content($content) {
     return $content;
 }
 add_filter("the_content", "davestates_statemap_content");
+
+function davestates_statemap_data_content($content) {
+
+    global $post;
+
+    $postid = $post->ID;
+    $statename = get_query_var('state');
+
+    $state = davestates_get_state($statename);
+    $statecode = "Code: " . $state['statecode']." Name: " . $statename;
+
+    if ($post->post_type == 'davestates_statemap') {
+        $content = sprintf(
+          "%s" . davestates_statemap_statedata_page($statecode, $postid),
+           $content
+        );
+    }
+
+    return $content;
+}
+add_filter("the_content", "davestates_statemap_data_content");
+
 
 /**function davestates_statemap_statedata_shortcode($atts, $content = null) {
     $a = shortcode_atts( array(
@@ -157,8 +183,13 @@ add_filter('clean_url', 'davestates_clean_url_utf');
 
 
 function davestates_statemap_rewrite_rules($rules) {
+
+    //$rewrite_tag = '%state%';
+
+
+
     $newrules = array();
-    $newrules['statemap/%postname%/(.*)'] = 'index.php?pagename=statemap/%postname%&state=$matches[1]';
+    $newrules['statemap/([^/]*)/([^/]*)'] = 'index.php?davestates_statemap=$matches[1]&state=$matches[2]';
     $finalrules = $newrules + $rules;
     return $finalrules;
 }
