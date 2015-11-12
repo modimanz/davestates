@@ -148,7 +148,12 @@ function davestate_import_csv($file, $category, $overwrite = false) {
           $fields_string = serialize($fields);
 
           // Add row to end of import rows
-          $import_rows[] = array($catid, $statecode, $state_name, $fields_string);
+          $import_rows[] = array(
+            'categoryid' => $catid,
+            'statecode' => $statecode,
+            'statename' => $state_name,
+            'fields' => $fields_string
+          );
       }
 
       $row++;
@@ -157,7 +162,8 @@ function davestate_import_csv($file, $category, $overwrite = false) {
     fclose($handle);
 
     // TODO update field headers
-    DavestatesCategory_List::update_field_headers($catid);
+    DavestatesCategory_List::update_field_headers($catid, $headers);
+    Davestates_StateData::insert_data_multiple($catid, $import_rows);
 
     $category->title = $title;
     $category->headers = $headers_text;

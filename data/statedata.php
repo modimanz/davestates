@@ -87,42 +87,139 @@ class Davestates_StateData {
    * @param bool|false $postid
    * @return array
    */
-  public static function get_state_data($state = false, $postid = false) {
+  public static function get_state_data($state = false, $categoryid = false) {
     global $wpdb;
     $rows = array();
-
     $stateArr = Davestates_StateData::get_state($state);
-
     $sql = "SELECT * FROM {$wpdb->prefix}davestatesdata";
-
-    if (isset($stateArr['id']) || ($postid != false)) {
+    if (isset($stateArr['id']) || ($categoryid != false)) {
       $sql.=" Where ";
     }
-    if (isset($stateArr['id'])) {
-      $sql.=sprintf("id = %s", $stateArr['id']);
-    }
-    if ($postid != false) {
-      $sql.=sprintf("postid = %s", $postid);
-    }
-
+    $sql.=(isset($stateAttr['id'])) ? sprintf("id = %s", $stateArr['id']) : "";
+    $sql.=($categoryid != false ) ? sprintf("categoyid = %s", $categoryid) : "";
     $rows = $wpdb->get_results($sql, 'ARRAY_A');
-
     return $rows;
   }
 
   /**
    * Insert multiple rows of data into the State Data table
-   * @param $state
+   * @param $stateid
    * @param $postid
    * @param $rows
+   *
+   * @return bool|int
    */
-  public function insert_multiple($state, $postid, $rows) {
+  public static function insert_data_multiple($categoryid, $rows) {
+    global $wpdb;
+    $sql = "INSERT INTO {$wpdb->prefix}davestatesdata (categoryid, stateid, data) ";
+    foreach ($rows as $row) {
+      $statecode = $row['statecode'];
+      $state = Davestates_StateData::get_state($statecode);
+      $stateid = $state['id'];
+      $sql.="(";
+      $sql.=sprintf("'%s', '%s', '%s'", $categoryid, $stateid, $row['fields']);
+      $sql.="),";
+    }
+    $sql = substr($sql, 0, -1);
+
+    return $wpdb->query($sql);
+  }
+
+  /**
+   * @param $categoryid
+   * @param $row
+   * @return bool|int
+   */
+  public static function insert_data($categoryid, $row) {
+    return Davestates_StateData::insert_data_multiple($categoryid, array($row));
+  }
+
+  /**
+   * Insert a new Statemap Category
+   *
+   * @param $title
+   * @param $headers - Serialized array of field headers array('item 1', 'item 2')
+   * @param string $sources
+   * @param array $rows
+   * @param bool|false $postid
+   *
+   * @return false|int
+   */
+  public static function insert_category($title, $headers, $sources = "", $rows = array(), $postid = false) {
+    global $wpdb;
+
+    $sql = "INSERT INTO {$wpdb->prefix}davestatescategory (name, headers, sources, active) ";
+    $sql.=sprintf("( '%s', '%s', '%s', 1 )", $title, $headers, $sources);
+
+    $record_count = $wpdb->query($sql);
+    if (!$record_count) {
+      return false;
+    };
+
+
+    $insert_id = $wpdb->insert_id;
+
+    if (count($rows) > 0) {
+      Davestates_StateData::insert_data_multiple($insert_id, $rows);
+    }
+
+    if ($postid) {
+      Davestates_StateData::insert_reference($insert_id, $postid);
+    }
+
+    return $record_count;
+  }
+
+  /**
+   * Inserts a davestatesreference record linking a category and a statemap post
+   *
+   * @param $categoryid
+   * @param $postid
+   *
+   * @return boot|int
+   */
+  public static function insert_reference($categoryid, $postid) {
+    $reference = Davestates_StateData::load_reference($categoryid, $postid);
+    if (!is_null($reference)) {
+      // Cannot add a duplicate reference
+      return false;
+    }
+
 
 
   }
 
-  public function insert($state, $postid, $row) {
 
+  /**
+   * Load all references for a category or a postid
+   * @param bool|false $categoryid
+   * @param bool|false $postid
+   * @return array|null|object
+   */
+  public static function load_references($categoryid = false, $postid = false) {
+    global $wpdb;
+    $rows = array();
+    $sql = "SELECT * FROM {$wpdb->prefix}davestatesreferences";
+    if ($categoryid || $postid) {
+      $sql.=" Where ";
+    }
+    $sql.=($categoryid) ? sprintf("categoryid = %s", $categoryid) : "";
+    $sql.=($postid) ? sprintf("postid = %s", $postid) : "";
+    $rows = $wpdb->get_results($sql, 'ARRAY_A');
+    return $rows;
   }
+
+  /**
+   * Load a single reference
+   *
+   * @param $categoryid
+   * @param $postid
+   * @return mixed|null
+   */
+  public static function load_reference($categoryid, $postid) {
+    $references = Davestates_StateData::load_references($categoryid,$postid);
+    return (!is_null($references)) ? reset($references) : null;
+  }
+
 
 }

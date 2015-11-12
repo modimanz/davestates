@@ -99,6 +99,7 @@ function davestates_install() {
     categoryid mediumint(9) NOT NULL,
     FOREIGN KEY (categoryid) REFERENCES $cat_table_name (id) ON DELETE CASCADE,
     FOREIGN KEY (postid) REFERENCES $post_table (ID) ON DELETE CASCADE,
+    UNIQUE KEY catpost (postid, categoryid),
     UNIQUE KEY id (id)
     ) $charset_collate;";
   dbDelta( $ref_sql);

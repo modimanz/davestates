@@ -17,7 +17,11 @@ jQuery(document).ready(function () {
     jQuery('#vmap').vectorMap({
         map: 'usa_en',
         enableZoom: true,
+        borderColor: '#ff0000',
+        borderOpacity: 1,
+        borderWidth: 2,
         backgroundColor: '#000000',
+        normalizeFunction: 'linear',
         color: '#ff0000',
         hoverColor: '#3300ff',
         selectedColor: '#0033ff',
