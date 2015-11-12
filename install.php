@@ -68,6 +68,8 @@ function davestates_install() {
   $cat_table_name = $wpdb->prefix . 'davestatescategory';
   $cat_sql = "CREATE TABLE $cat_table_name (
     id mediumint(9) NOT NULL AUTO_INCREMENT,
+    name tinytext NOT NULL,
+    sources text DEFAULT '',
     headers blob NOT NULL,
     active tinyint(1) DEFAULT 0,
     UNIQUE KEY id (id)

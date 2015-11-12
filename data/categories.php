@@ -9,11 +9,11 @@ if (!class_exists('WP_List_Table')) {
 }
 
 // Table List Classes for objects
-class DaveStates_List extends WP_List_Table {
+class DavestatesCategory_List extends WP_List_Table {
   public function __construct() {
     parent::__construct([
-      'singular' => __('State', 'sp'),
-      'plural' => __('States', 'sp'),
+      'singular' => __('Statemap Category', 'sp'),
+      'plural' => __('Statemap Categories', 'sp'),
       'ajax' => false
     ]);
   }
@@ -28,17 +28,14 @@ class DaveStates_List extends WP_List_Table {
   public static function get_states($per_page = 10, $page_number = 1) {
     global $wpdb;
 
-    $sql = "SELECT * FROM {$wpdb->prefix}davestates";
-
+    $sql = "SELECT * FROM {$wpdb->prefix}davestatescategory";
     if (!empty ($_REQUEST['orderby'])) {
       $sql .= ' ORDER BY ' . esc_sql($_REQUEST['orderby']);
       $sql .= !empty($_REQUEST['order']) ? ' ' . esc_sql($_REQUEST['order']) : ' ASC';
     }
 
     $sql .= " LIMIT $per_page";
-
     $sql .= ' OFFSET ' . ($page_number - 1) * $per_page;
-
     $result = $wpdb->get_results($sql, 'ARRAY_A');
 
     return $result;
@@ -49,14 +46,24 @@ class DaveStates_List extends WP_List_Table {
    *
    * @param $id
    */
-  public static function delete_state($id) {
+  public static function delete_category($id) {
     global $wpdb;
 
     $wpdb->delete(
-      "{$wpdb->prefix}davestates",
+      "{$wpdb->prefix}davestatescategory",
       ['id' => $id],
       ['%d']
     );
+  }
+
+  /**
+   * Update the field headers for this category
+   *
+   * @param $catid
+   * @param $headers
+   */
+  public static function update_field_headers($catid, $headers) {
+
   }
 
   /**
@@ -67,11 +74,14 @@ class DaveStates_List extends WP_List_Table {
   public static function record_count() {
     global $wpdb;
 
-    $sql = "SELECT COUNT(*) FROM {$wpdb->prefix}davestates";
+    $sql = "SELECT COUNT(*) FROM {$wpdb->prefix}davestatescategory";
 
     return $wpdb->get_var($sql);
   }
 
+  /**
+   *
+   */
   public function no_items() {
     _e('No States to display.', 'sp');
   }
@@ -79,25 +89,37 @@ class DaveStates_List extends WP_List_Table {
   /**
    * Renders the Name Column of the table
    * @param $item
+   * @return string
    */
   function column_name($item) {
-    $delete_nonce = wp_create_nonce('sp_delete_davestate');
+    $delete_nonce = wp_create_nonce('sp_delete_davestatescategory');
 
     $title = '<strong></strong>'.$item['name'].'</strong>';
 
     $actions = [
-      'delete' => sprintf( '<a href="?page=%s&action=%s$davestate=%s&_wpnonce=%s">Delete</a>',
+      'delete' => sprintf( '<a href="?page=%s&action=%s$davestatescategory=%s&_wpnonce=%s">Delete</a>',
         esc_attr( $_REQUEST['page'] ), 'delete', absint( $item['id'] ), $delete_nonce )
     ];
 
     return $title . $this->row_actions( $actions );
   }
 
+  /**
+   * @param object $item
+   * @param string $column_name
+   * @return mixed
+   */
   function column_default($item, $column_name) {
     switch ($column_name) {
-      case 'statecode':
+      case 'name':
+      case 'sources':
+      case 'headers':
+      case 'active':
       case 'id':
         return $item[$column_name];
+      break;
+      case 'headers':
+        return unserialize($item);
       default:
         return print_r($item, true);
     }
@@ -125,7 +147,9 @@ class DaveStates_List extends WP_List_Table {
     $columns = [
       'cb' => '<input type="checkbox" />',
       'name' => __('Name', 'sp'),
-      'statecode' => __('Abbr', 'sp')
+      'sources' => __('sources', 'sp'),
+      'headers' => __('headers', 'sp'),
+      'active' => __('active', 'sp'),
     ];
 
     return $columns;
@@ -139,7 +163,8 @@ class DaveStates_List extends WP_List_Table {
   public function get_sortable_columns() {
     $sortable_columns = array(
       'name' => array( 'name', true ),
-      'statecode' => array( 'statecode', false )
+      'sources' => array( 'statecode', false ),
+      'headers' => array('headers', false),
     );
 
     return $sortable_columns;
@@ -189,11 +214,11 @@ class DaveStates_List extends WP_List_Table {
       // In our file that handles the request, verify the nonce.
       $nonce = esc_attr( $_REQUEST['_wpnonce'] );
 
-      if ( ! wp_verify_nonce( $nonce, 'sp_delete_davestate' ) ) {
+      if ( ! wp_verify_nonce( $nonce, 'sp_delete_davestatescategory' ) ) {
         die( 'Go get a life script kiddies' );
       }
       else {
-        self::delete_state( absint( $_GET['davestate'] ) );
+        self::delete_category( absint( $_GET['davestatescategory'] ) );
 
         wp_redirect( esc_url( add_query_arg() ) );
         exit;
@@ -210,7 +235,7 @@ class DaveStates_List extends WP_List_Table {
 
       // loop over the array of record IDs and delete them
       foreach ( $delete_ids as $id ) {
-        self::delete_state( $id );
+        self::delete_category( $id );
 
       }
 

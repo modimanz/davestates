@@ -6,6 +6,7 @@ defined( 'ABSPATH' ) or die( 'Action not allowed bub.' );
 
 // TODO Make statemap settings available per statemap content
 // TODO Use meta fields to add the statemap settings
+// TODO Format the STATEMAP Data Output
 
 /**
  * Create Custom Post Type
@@ -39,8 +40,11 @@ function davestates_create_statemap() {
 }
 add_action('init', 'davestates_create_statemap', 0);
 
-function davestates_statemap_metaboxes() {
 
+/**
+ * Custom Fields for the statemap posttype
+ */
+function davestates_statemap_metaboxes() {
 
 }
 
@@ -113,6 +117,12 @@ add_action('wp_enqueue_scripts', 'davestates_statemap_enqueue_scripts');
 add_shortcode('davestates-statemap', 'davestates_statemap_shortcode');
 **/
 
+/**
+ * Adds the statemap html code to the_content of the statemap
+ *
+ * @param $content
+ * @return string
+ */
 function davestates_statemap_content($content) {
 
     global $post;
@@ -129,6 +139,12 @@ function davestates_statemap_content($content) {
 }
 add_filter("the_content", "davestates_statemap_content");
 
+/**
+ * Adds the States Data Page to the_content of the statemap so we don't need a template
+ *
+ * @param $content
+ * @return string
+ */
 function davestates_statemap_data_content($content) {
 
     global $post;
@@ -166,6 +182,13 @@ add_filter("the_content", "davestates_statemap_data_content");
 add_shortcode('davestates-statemap-statedata', 'davestates_statemap_statedata_shortcode');
 */
 
+/**
+ * Generates the States Data Page for the statemap posts
+ *
+ * @param $statecode
+ * @param $postid
+ * @return string
+ */
 function davestates_statemap_statedata_page($statecode, $postid) {
     return "<div class='entry-content'>
                 <span>".$statecode."</span>
@@ -173,6 +196,12 @@ function davestates_statemap_statedata_page($statecode, $postid) {
             </div>";
 }
 
+/**
+ * Either this adds the charset type or this is not needed
+ *
+ * @param $url
+ * @return string
+ */
 function davestates_clean_url_utf($url) {
     if (stripos($url, plugins_url('/js/jqvmap/maps/jquery.vmap.usa.js',__FILE__) !== false)) {
         return $url."\" charset=\"utf-8";
@@ -181,18 +210,25 @@ function davestates_clean_url_utf($url) {
 }
 add_filter('clean_url', 'davestates_clean_url_utf');
 
-
+/**
+ * Rewrite rules for individual states on a statemap
+ *
+ * @param $rules
+ * @return array
+ */
 function davestates_statemap_rewrite_rules($rules) {
-
-    //$rewrite_tag = '%state%';
-
-
-
     $newrules = array();
     $newrules['statemap/([^/]*)/([^/]*)'] = 'index.php?davestates_statemap=$matches[1]&state=$matches[2]';
     $finalrules = $newrules + $rules;
     return $finalrules;
 }
+
+/**
+ * This may not be needed.
+ *
+ * @param $vars
+ * @return mixed
+ */
 function davestates_statemap_rewrite_query_vars($vars) {
     array_push($vars, 'state');
     return $vars;

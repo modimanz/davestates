@@ -20,7 +20,7 @@ include( plugin_dir_path( __FILE__ ) . 'install.php');
 
 // Include Database Object Functions
 include( plugin_dir_path( __FILE__ ) . 'data/state.php');
-//include( plugin_dir_path( __FILE__ ) . 'data/categories.php');
+include( plugin_dir_path( __FILE__ ) . 'data/categories.php');
 
 // Include Settings Pages
 include( plugin_dir_path( __FILE__ ) . 'settings.php');
@@ -30,7 +30,6 @@ include( plugin_dir_path( __FILE__ ) . 'statemap.php');
 
 // TODO create urls to admin pages
 // TODO Example @ https://gist.github.com/kasparsd/2924900
-// TODO USE add_permastruct
 //    /davestates/categories/ - View all StatePage Categories
 //    /davestates/categories/create - Create New State Page Cat
 //    /davestates/categories/#id - View a category
@@ -46,65 +45,32 @@ include( plugin_dir_path( __FILE__ ) . 'statemap.php');
 //    /davestate/statepages/#id/edit
 //    /davestate/statepages/#id/delete
 
-// TODO create urls to statepages
-//    FOR EACH BELOW
-//    /states/{statename}/{category->url}/   OR statepage->url
-
 // TODO Allow user to upload a CSV file into the statedata->data field
 
-// TODO foreach Category Create a Statemap -
-// TODO foreach Category/State combo create a URL to davestate_data_page($catid, stateid)
-
-
 /**
- * Generate a page for each state for the category.
- *
- * @param $catid
- * @param stateid $
- */
-function davesatate_generate_pages($category) {
-
-}
-
-function davestate_generate_page_urls() {
-  // TODO for each page make a url link to
-}
-
-function davestate_data_page($pageid) {
-
-}
-
-
-
-
-/**
- * Import the csv file into subcategory
+ * Import the csv file into Category
  *
  * @param $file
  * @param $type
- * @param int $subcatid
+ * @param int $catid
  * @param bool|false $overwrite
  * @return bool
  */
-function davestate_import_csv($file, $type, $subcat, $overwrite = false) {
+function davestate_import_csv($file, $category, $overwrite = false) {
   $status = false;
 
   $import_rows = array();
 
-  $subcatid = $subcat->id;
+  $catid = $category->id;
 
-  // Cannot continue without a subcat id
-  if ($subcatid == 0) return false;
-
-  // TODO Looks like this is a new subcat
+  // Cannot continue without a $catid
+  if ($catid == 0) return false;
 
   if ($overwrite) {
-    // TODO Delete davestates_data rows with subcatid
-
-
+    // TODO Delete davestates_data rows with catid
   } else {
-    // Do not continue if data laready exists
-    // TODO if davestates_data count > 0 for subcatid return false
+    // Do not continue if data already exists
+    // TODO if davestates_data count > 0 for catid return false
   }
 
   // Iterate through the File to get rows to import
@@ -117,15 +83,15 @@ function davestate_import_csv($file, $type, $subcat, $overwrite = false) {
       switch ($row) {
         case 1:
               // Title Row
-              // TODO Get title
+              // Get title
               $title = $data[0];
               break;
         case 2:
               // Header Row
-              // TODO Get Field headers
-              // TODO Get all rows starting with row 3 as array
-              $headers = $data; // TODO get rid of first two array items
-              // TODO Serialize the array
+              // Get Field headers
+              // Get all rows starting with row 3 as array
+              $headers = array_slice($data, 2); // get rid of first two array items
+              // Serialize the array
               $headers_text = serialize($headers);
               break;
         //case 3:
@@ -136,8 +102,8 @@ function davestate_import_csv($file, $type, $subcat, $overwrite = false) {
           $fields = array();
           for ($c=0; $c < $num; $c++) {
             echo $data[$c] . "<br />\n";
-            // TODO Column One should be statecode
-            // TODO Column two should be state
+            // Column One should be statecode
+            // Column two should be state
             switch ($c) {
               case 0;
                 $statecode = $data[$c];
@@ -146,13 +112,14 @@ function davestate_import_csv($file, $type, $subcat, $overwrite = false) {
                 $state_name = $data[$c];
                 break;
               default:
-                // TODO Finish adding fields to array
+                // Finish adding fields to array
                 $fields[$c] = $data[$c];
             }
           }
           $fields_string = serialize($fields);
 
-          $import_rows = array($subcatid, $statecode, $state_name, $fields_string);
+          // Add row to end of import rows
+          $import_rows[] = array($catid, $statecode, $state_name, $fields_string);
       }
 
       $row++;
@@ -161,8 +128,10 @@ function davestate_import_csv($file, $type, $subcat, $overwrite = false) {
     fclose($handle);
 
     // TODO update field headers
-    $subcat->title = $title;
-    $subcat->headers = $headers_text;
+    DavestatesCategory_List::update_field_headers($catid);
+
+    $category->title = $title;
+    $category->headers = $headers_text;
 
     // TODO Import the import rows into davestates_data
   }
