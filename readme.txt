@@ -11,9 +11,16 @@ License URI: http://www.gnu.org/licenses/gpl-2.0.html
 USA State Map Plugin for using csv table data as state data.
 
 == Description ==
-Generates a state link for each data catagory.   This plugin will allow users to add a properly formatted spreadsheet or
- csv file as data subcategories for state catagory pages.
 
+This plugin creates a new post type called State Maps.   This will display a map of the USA
+and allow users to upload csv files as content for the individual states.
+
+== TODO ==
+*Make the usesr interfaces to upload the csv file
+*Finish data object controllers for categories and state data
+*Create a references table to link State Maps in a many to many relationship with categories.
+*Add State Map properties to the post type as admin only meta fields
+*Tell David to buy me a taco when i'm done with this, i'm going to be hungry
 
 == Files ==
 davestates.php - Main module files calling all components
