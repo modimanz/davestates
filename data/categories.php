@@ -4,12 +4,13 @@
 // Block direct access to the plugin
 defined('ABSPATH') or die('Action not allowed bub.');
 
-if (!class_exists('WP_List_Table')) {
-  require_once(ABSPATH . 'wp-admin/includes/class-wp-list-table.php');
+if (!class_exists('Davestates_List_Table')) {
+  //require_once(ABSPATH . 'wp-admin/includes/class-wp-list-table.php');
+  require_once(plugin_dir_path( dirname(__FILE__) ) . 'includes/class-davestates-list-table.php');
 }
 
 // Table List Classes for objects
-class DavestatesCategory_List extends WP_List_Table {
+class DavestatesCategory_List extends Davestates_List_Table {
   public function __construct() {
     parent::__construct([
       'singular' => __('Statemap Category', 'sp'),

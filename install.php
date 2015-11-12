@@ -70,8 +70,9 @@ function davestates_install() {
     id mediumint(9) NOT NULL AUTO_INCREMENT,
     name tinytext NOT NULL,
     sources text DEFAULT '',
-    headers blob NOT NULL,
+    headers blob DEFAULT '',
     active tinyint(1) DEFAULT 0,
+    data blob DEFAULT '',
     UNIQUE KEY id (id)
     ) $charset_collate;";
   dbDelta( $cat_sql);
@@ -88,6 +89,20 @@ function davestates_install() {
     UNIQUE KEY id (id)
     ) $charset_collate;";
   dbDelta( $data_sql);
+
+  // StateMap Categories  // Previously Called Subcategories
+  $ref_table_name = $wpdb->prefix . 'davestatesreferences';
+  $post_table = $wpdb->prefix.'posts';
+  $ref_sql = "CREATE TABLE $ref_table_name (
+    id mediumint(9) NOT NULL AUTO_INCREMENT,
+    postid bigint(20) unsigned NOT NULL,
+    categoryid mediumint(9) NOT NULL,
+    FOREIGN KEY (categoryid) REFERENCES $cat_table_name (id) ON DELETE CASCADE,
+    FOREIGN KEY (postid) REFERENCES $post_table (ID) ON DELETE CASCADE,
+    UNIQUE KEY id (id)
+    ) $charset_collate;";
+  dbDelta( $ref_sql);
+
 
   add_option( 'davestates_db_version', $davestates_db_version);
 }
@@ -158,13 +173,15 @@ $wpdb->query("INSERT INTO $table_name
 
 }
 
-register_activation_hook( __FILE__, 'davestates_install');
-register_activation_hook( __FILE__, 'davestates_install_data');
+register_activation_hook( __FILE__ , 'davestates_install');
+register_activation_hook( __FILE__ , 'davestates_install_data');
+
 
 function davestates_update_db_check() {
   global $davestates_db_version;
 
   if ( get_site_option('davestates_db_version') != $davestates_db_version) {
+    davestates_install();
     davestates_install_data();
   }
 

@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) or die( 'Action not allowed bub.' );
 /**
  * Create Custom Post Type
  */
-function davestates_create_statemap() {
+function davestates_statemap_create() {
     global $wp_rewrite;
     //add_post_type_support()
 
@@ -38,7 +38,7 @@ function davestates_create_statemap() {
 
     $wp_rewrite->flush_rules();
 }
-add_action('init', 'davestates_create_statemap', 0);
+add_action('init', 'davestates_statemap_create', 0);
 
 
 /**
@@ -75,16 +75,19 @@ function davestates_statemap_enqueue_scripts() {
         wp_register_style('statemap-style', plugins_url("/css/statemap.css", $dir));
         wp_enqueue_style('statemap-style');
 
-        //wp_register_script('davestates-jquery', plugins_url("/js/jquery-1.7.1.min.js", $dir));
-        //wp_enqueue_script('davestates-jquery');
-
         wp_enqueue_script('jquery');
 
+        // Load jvqmap Javascript
         wp_register_script('statemap-vmap', plugins_url("/js/jqvmap/jquery.vmap.js", $dir, array('jquery')));
         wp_enqueue_script('statemap-vmap');
 
+        // Load jqvmap usa map javascript
         wp_register_script('statemap-usa', plugins_url("/js/jqvmap/maps/jquery.vmap.usa.js", $dir, array('jquery')));
         wp_enqueue_script('statemap-usa');
+
+        //
+        $statename = get_query_var('state');
+        $state = davestates_get_state($statename);
 
         wp_register_script('davestates-statemap-script', plugins_url("/js/statemap.js", $dir, array('jquery')));
         wp_localize_script('davestates-statemap-script', 'statemap_params', array(
@@ -92,19 +95,13 @@ function davestates_statemap_enqueue_scripts() {
           'backgroundColor' => '#000000',
           'selectedColor' => '#0033ff',
           'statemapUrl' => get_permalink($post->ID),
+          'statecode' => $state['statecode']
         ));
         wp_enqueue_script('davestates-statemap-script');
     }
-
-    //<script type="text/javascript" src="http://code.jquery.com/jquery-1.11.3.min.js"></script>
-    //<script type="text/javascript" src="../jqvmap/jquery.vmap.js"></script>
-    //<script type="text/javascript" src="../jqvmap/maps/jquery.vmap.usa.js" charset="utf-8"></script>
 }
 add_action('wp_enqueue_scripts', 'davestates_statemap_enqueue_scripts');
 
-
-// TODO Use Shortcode to ad the statemap at the top of the page
-// TODO Use Shortcode to return the statemap data when a state is selected
 /**function davestates_statemap_shortcode($atts, $content = null) {
     ob_start();
     ?>

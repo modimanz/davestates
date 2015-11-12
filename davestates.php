@@ -15,8 +15,7 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 // Block direct access to the plugin
 defined( 'ABSPATH' ) or die( 'Action not allowed bub.' );
 
-// Include Install Functions
-include( plugin_dir_path( __FILE__ ) . 'install.php');
+
 
 // Include Database Object Functions
 include( plugin_dir_path( __FILE__ ) . 'data/state.php');
@@ -27,6 +26,36 @@ include( plugin_dir_path( __FILE__ ) . 'settings.php');
 
 // Include Settings Pages
 include( plugin_dir_path( __FILE__ ) . 'statemap.php');
+
+// Include Install Functions
+include( plugin_dir_path( __FILE__ ) . 'install.php');
+//register_activation_hook( plugin_dir_path( __FILE__ ) . 'install.php', 'davestates_install');
+//register_activation_hook( plugin_dir_path( __FILE__ ) . 'install.php', 'davestates_install_data');
+
+function davestates_deactivate() {
+
+  $option_name = 'davestates_db_version';
+
+  delete_option( $option_name );
+
+  // For site options in multisite
+  //delete_site_option( $option_name );
+
+  //drop a custom db table
+  global $wpdb;
+
+  $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}davestatessubcategory" );
+  $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}davestatessubcategories" );
+  $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}davestatesdata" );
+  $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}davestatesreferences" );
+  $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}davestates" );
+  $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}davestatespages" );
+  $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}davestatescategories" );
+  $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}davestatescategory" );
+}
+register_deactivation_hook(__FILE__, 'davestates_deactivate');
+// Uninstall Register
+//register_uninstall_hook(plugin_dir_path(__FILE__).'uninstall.php', 'davestates_uninstall');
 
 // TODO create urls to admin pages
 // TODO Example @ https://gist.github.com/kasparsd/2924900
@@ -146,7 +175,7 @@ function davestate_import_csv($file, $category, $overwrite = false) {
 function davestates_get_states() {
 
   $states = wp_cache_get('davesstates_states','davestates');
-  $states = false;
+  //$states = false;
   if ( false == $states ) {
     $states = DaveStates_List::get_states();
     wp_cache_add('davestates_states', $states, 'davestates');
