@@ -85,22 +85,15 @@ register_deactivation_hook(__FILE__, 'davestates_deactivate');
  * @param bool|false $overwrite
  * @return bool
  */
-function davestate_import_csv($file, $category, $overwrite = false) {
+function davestate_import_csv($file, $categoryid = false, $postid = false) {
   $status = false;
 
   $import_rows = array();
 
-  $catid = $category->id;
+  //$catid = $categoryid;
 
   // Cannot continue without a $catid
-  if ($catid == 0) return false;
-
-  if ($overwrite) {
-    // TODO Delete davestates_data rows with catid
-  } else {
-    // Do not continue if data already exists
-    // TODO if davestates_data count > 0 for catid return false
-  }
+  //if ($catid == 0) return false;
 
   // Iterate through the File to get rows to import
   $row = 1;
@@ -114,6 +107,7 @@ function davestate_import_csv($file, $category, $overwrite = false) {
               // Title Row
               // Get title
               $title = $data[0];
+              $sources = $data[1];
               break;
         case 2:
               // Header Row
@@ -149,7 +143,7 @@ function davestate_import_csv($file, $category, $overwrite = false) {
 
           // Add row to end of import rows
           $import_rows[] = array(
-            'categoryid' => $catid,
+            'categoryid' => $categoryid,
             'statecode' => $statecode,
             'statename' => $state_name,
             'fields' => $fields_string
@@ -162,11 +156,11 @@ function davestate_import_csv($file, $category, $overwrite = false) {
     fclose($handle);
 
     // TODO update field headers
-    DavestatesCategory_List::update_field_headers($catid, $headers);
-    Davestates_StateData::insert_data_multiple($catid, $import_rows);
 
-    $category->title = $title;
-    $category->headers = $headers_text;
+    if (!$categoryid)
+      Davestates_StateData::insert_category($title, $headers, $sources, $import_rows, $postid);
+
+    //TODO if categorgyid exists then update instead of insert
 
     // TODO Import the import rows into davestates_data
   }

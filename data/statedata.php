@@ -12,6 +12,11 @@ class Davestates_StateData {
 
   public $states;
 
+  /**
+   * Davestates_StateData constructor.
+   * TODO we do not need args here all static functions
+   * @param array $args
+   */
   public function __construct( $args = array() ) {
     $args = wp_parse_args($args, array(
       'stateid' => '',
@@ -23,6 +28,11 @@ class Davestates_StateData {
     $this->_args = $args;
   }
 
+  /**
+   * Get all the states and cache them
+   *
+   * @return array|bool|mixed|null|object
+   */
   public static function get_states() {
     //wp_cache_add
 
@@ -31,19 +41,21 @@ class Davestates_StateData {
 
     //$states = false;
     if ( false == $states ) {
-
       global $wpdb;
       $sql = "SELECT * FROM {$wpdb->prefix}davestates";
       $states = $wpdb->get_results($sql, 'ARRAY_A');
-
       wp_cache_add('davestates_states', $states, 'davestates');
     }
-
     return $states;
   }
 
+  /**
+   * Get a state object
+   *
+   * @param $state
+   * @return bool
+   */
   public static function get_state($state) {
-
     $stateArr = Davestates_StateData::sanitize_state($state);
     $states = Davestates_StateData::get_states();
     $state = false;
@@ -56,6 +68,12 @@ class Davestates_StateData {
     return $state;
   }
 
+  /**
+   * Sanitize the state ojbect lookup call
+   *
+   * @param $state
+   * @return array
+   */
   public static function sanitize_state($state) {
     // Sanitize the state arg
     if (!$state) {
@@ -76,7 +94,6 @@ class Davestates_StateData {
     }
 
     return array('value' => $state, 'field' => $statefield);
-
   }
 
   /**
@@ -85,6 +102,7 @@ class Davestates_StateData {
    * @param string/integer/bool|false $state
    *    can be statecode / statename / or stateid
    * @param bool|false $postid
+   *
    * @return array
    */
   public static function get_state_data($state = false, $categoryid = false) {
@@ -152,20 +170,16 @@ class Davestates_StateData {
     $sql.=sprintf("( '%s', '%s', '%s', 1 )", $title, $headers, $sources);
 
     $record_count = $wpdb->query($sql);
-    if (!$record_count) {
+    if (!$record_count)
       return false;
-    };
-
 
     $insert_id = $wpdb->insert_id;
 
-    if (count($rows) > 0) {
+    if (count($rows) > 0)
       Davestates_StateData::insert_data_multiple($insert_id, $rows);
-    }
 
-    if ($postid) {
+    if ($postid)
       Davestates_StateData::insert_reference($insert_id, $postid);
-    }
 
     return $record_count;
   }
@@ -184,9 +198,10 @@ class Davestates_StateData {
       // Cannot add a duplicate reference
       return false;
     }
-
-
-
+    global $wpdb;
+    $sql = "INSERT INTO {$wpdb->prefix}davestatesreferences (postid, categoryid) ";
+    $sql.=sprintf("( '%s', '%s')", $postid, $categoryid);
+    return  $wpdb->query($sql);
   }
 
 
@@ -220,6 +235,4 @@ class Davestates_StateData {
     $references = Davestates_StateData::load_references($categoryid,$postid);
     return (!is_null($references)) ? reset($references) : null;
   }
-
-
 }
