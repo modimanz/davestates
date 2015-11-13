@@ -8,7 +8,7 @@ Stable tag: 4.3
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-USA State Map Plugin for using csv table data as state data.
+USA State Map Plugin for using tablepress tables as map data
 
 == Description ==
 
