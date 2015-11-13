@@ -8,26 +8,6 @@ defined( 'ABSPATH' ) or die( 'Action not allowed bub.' );
 global $davestates_db_version;
 $davestates_db_version = '1.2';
 
-//  Table: statecategories - Categories of state page data
-//    fields:   id
-//              name - text name of category
-//              url - path to category
-//              description - text description of category
-//  Table: statepages - Link to State and Category
-//     fields:  id
-//              stateid - integer state id
-//              categoryid - integer category id
-//              url - text path to page relative to base
-//              html - blob page html data
-//  Table: statesubcategories
-//     fields:  id
-//              categoryid - integer category id
-//              headers - blob - integer key array of header names
-//              active - boolean - is this subcat activ
-//  Table: statedata
-//    fields:   id
-//              subcatid - integer sub category id
-//              data - blob - integer key (column) array of subcat data / row
 //  Table: states - states
 //
 //    fields:   id
@@ -63,47 +43,6 @@ function davestates_install() {
     UNIQUE KEY id (id)
     ) $charset_collate;";
   dbDelta( $states_sql);
-
-  // StateMap Categories  // Previously Called Subcategories
-  $cat_table_name = $wpdb->prefix . 'davestatescategory';
-  $cat_sql = "CREATE TABLE $cat_table_name (
-    id mediumint(9) NOT NULL AUTO_INCREMENT,
-    name tinytext NOT NULL,
-    sources text DEFAULT '',
-    headers blob DEFAULT '',
-    active tinyint(1) DEFAULT 0,
-    data blob DEFAULT '',
-    UNIQUE KEY id (id)
-    ) $charset_collate;";
-  dbDelta( $cat_sql);
-
-  // State Data
-  $data_table_name = $wpdb->prefix . 'davestatesdata';
-  $data_sql = "CREATE TABLE $data_table_name (
-    id mediumint(9) NOT NULL AUTO_INCREMENT,
-    categoryid mediumint(9) NOT NULL,
-    stateid mediumint(9) NOT NULL,
-    data blob NOT NULL,
-    FOREIGN KEY (categoryid) REFERENCES $cat_table_name (id) ON DELETE CASCADE,
-    FOREIGN KEY (stateid) REFERENCES $states_table_name (id) ON DELETE CASCADE,
-    UNIQUE KEY id (id)
-    ) $charset_collate;";
-  dbDelta( $data_sql);
-
-  // StateMap Categories  // Previously Called Subcategories
-  $ref_table_name = $wpdb->prefix . 'davestatesreferences';
-  $post_table = $wpdb->prefix.'posts';
-  $ref_sql = "CREATE TABLE $ref_table_name (
-    id mediumint(9) NOT NULL AUTO_INCREMENT,
-    postid bigint(20) unsigned NOT NULL,
-    categoryid mediumint(9) NOT NULL,
-    FOREIGN KEY (categoryid) REFERENCES $cat_table_name (id) ON DELETE CASCADE,
-    FOREIGN KEY (postid) REFERENCES $post_table (ID) ON DELETE CASCADE,
-    UNIQUE KEY catpost (postid, categoryid),
-    UNIQUE KEY id (id)
-    ) $charset_collate;";
-  dbDelta( $ref_sql);
-
 
   add_option( 'davestates_db_version', $davestates_db_version);
 }
