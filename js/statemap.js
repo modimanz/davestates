@@ -4,7 +4,7 @@ jQuery(document).ready(function () {
     url = statemap_params.statemapUrl;
     statecode = statemap_params.statecode;
 
-    //alert(statecode);
+    //alert(url);
     if (statecode.length != 2) {
         statecode = [];
         //jQuery('#vmap').vectorMap('set', 'selectedRegions',  [statecode]);

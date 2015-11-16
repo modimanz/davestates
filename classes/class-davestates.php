@@ -6,15 +6,19 @@
  * Time: 8:54 AM
  */
 
-// TODO Make statemap settings available per statemap content
+// TODO Create Filter functions for Tablepress tables / State
+// TODO Create shortcode caller for Tablespress State Tables
+// TODO Create metabox to select Tablepress tables to link to Map
+// TODO Modify Statemap Page to call Shortcodes for Table_Ids / State
 // TODO Use meta fields to add the statemap settings
-// TODO Format the STATEMAP Data Output
+// TODO Use CSS to Hide the First Column of data
+
 
 // Security
 // Block direct access to the plugin
 defined( 'ABSPATH' ) or die( 'Action not allowed bub.' );
 
-abstract class Davestastes {
+abstract class Davestates {
 
   const version = '0.9.1';
 
@@ -51,6 +55,13 @@ abstract class Davestastes {
     // On Deactivate
     register_deactivation_hook(__FILE__, array('Davestates', 'deactivate'));
 
+    add_action('tablepress_run', array('Davestates', 'tablepress_init'));
+
+  }
+
+  public static function tablepress_init() {
+    add_filter( 'tablepress_table_raw_render_data', array( __CLASS__, 'table_filter_rows' ), 10, 2 );
+    add_filter( 'tablepress_shortcode_table_default_shortcode_atts', array( __CLASS__, 'shortcode_attributes' ) );
   }
 
   /**
@@ -131,15 +142,27 @@ abstract class Davestastes {
     $postid = $post->ID;
     $statename = get_query_var('state');
 
+
+
     $state = self::get_state($statename);
     $statecode = "Code: " . $state['statecode']." Name: " . $statename;
 
     if ($post->post_type == 'davestates_statemap') {
-      $content = sprintf(
-        "%s" . self::statemap_statedata_page($statecode, $postid),
-        $content
-      );
+
+      $tables = self::get_tablepress_tables($post->ID);
+
+      $tableshtml = '';
+
+      foreach ($tables as $tid => $tablename) {
+        $tablecode = sprintf("[table id=%s state=%s /]", $tid, $statename);
+
+        $tableshtml = sprintf("%s<div class='entry-content'>
+                %s
+           </div>", $tableshtml, $tablecode);
+      }
     }
+
+    $content = sprintf("%s %s", $content, $tableshtml);
 
     return $content;
   }
@@ -159,30 +182,122 @@ abstract class Davestastes {
   }
 
   /**
+   * Meta fields for statemap
+   */
+  public static function statemap_meta_fields() {
+
+  }
+
+  /**
+   * Get all the table press tables
+   *
+   * @param $postid integer
+   *
+   *  TODO Filter for tables that have a first column named State
+   *
+   * @return array
+   */
+  public static function get_tablepress_tables($postid) {
+
+    // TODO cache the table function
+    //$tablesArr = wp_cache_get('davestates_tables','davestates');
+
+    $tables = TablePress::$controller->model_table->load_all();
+
+    $tablesArr = array();
+
+
+    foreach ($tables as $table_id ) {
+      // Load each wordpress table
+      $table = TablePress::$controller->model_table->load($table_id);
+      // Get the name of each table and it's ID as an array to return
+
+      //$stateheader = $table['data'][0][0];
+
+      // filter to only show tables with a column 1 name = State
+      //if (stripos($stateheader, 'state')) {
+        $tablesArr[$table_id] = $table['name'];
+      //}
+
+
+    }
+
+    return $tablesArr;
+  }
+
+  /**
+   * Filter the table data to remove rows that do not contain $statename
+   *
+   * @param $data
+   * @param $states
+   */
+  public static function table_filter_rows($table, $options) {
+
+    if (empty($options['states'])) {
+      return $table;
+    }
+
+    $states = explode( ',', $options['states']);
+
+    $rows = $table['data'];
+
+    foreach ($rows as $key => $row) {
+      if ($key == 0) {
+        continue;
+      }
+
+      foreach($states as $state) {
+        if (stripos($row[0], $state) != false) {
+          $hidden_rows[] = $key;
+        }
+      }
+    }
+    foreach ($hidden_rows as $key) {
+      unset( $table['data'][$key] );
+      unset( $table['visibility']['rows'][$key]);
+    }
+
+    return $table;
+  }
+
+  /**
+   * Attributes for the table shortcode
+   *
+   * @param $attr
+   * @return mixed
+   */
+  public static function shortcode_attributes( $attr ) {
+    $attr['state'] = 'all';
+    return $attr;
+  }
+
+
+
+  /**
    * Load Script and Stylesheet for custom Post Type
    */
   public static function statemap_enqueue_scripts() {
     global $post;
-    $dir = __FILE__;
+    $dir = dirname(__FILE__);
     if (is_singular('davestates_statemap')) {
-      wp_register_style('statemap-style', plugins_url("/css/statemap.css", $dir));
+      wp_register_style('statemap-style', plugin_dir_url($dir) . "css/statemap.css");
       wp_enqueue_style('statemap-style');
 
       wp_enqueue_script('jquery');
 
       // Load jvqmap Javascript
-      wp_register_script('statemap-vmap', plugins_url("/js/jqvmap/jquery.vmap.js", $dir, array('jquery')));
+      wp_register_script('statemap-vmap', plugin_dir_url($dir) . "js/jqvmap/jquery.vmap.js", array('jquery'));
       wp_enqueue_script('statemap-vmap');
 
       // Load jqvmap usa map javascript
-      wp_register_script('statemap-usa', plugins_url("/js/jqvmap/maps/jquery.vmap.usa.js", $dir, array('jquery')));
+      wp_register_script('statemap-usa', plugin_dir_url($dir) . "js/jqvmap/maps/jquery.vmap.usa.js", array('jquery'));
       wp_enqueue_script('statemap-usa');
 
       //
       $statename = get_query_var('state');
       $state = self::get_state($statename);
 
-      wp_register_script('davestates-statemap-script', plugins_url("/js/statemap.js", $dir, array('jquery')));
+      wp_register_script('davestates-statemap-script', plugin_dir_url($dir) . "js/statemap.js", array('jquery'));
       wp_localize_script('davestates-statemap-script', 'statemap_params', array(
         'hoverColor' => '#3300ff',
         'backgroundColor' => '#000000',
@@ -229,7 +344,9 @@ abstract class Davestastes {
     //wp_cache_add
 
     // TODO Cache this function
-    $states = wp_cache_get('davesstates_states','davestates');
+    $states = wp_cache_get('davestates_states','davestates');
+
+    $states = false;
 
     //$states = false;
     if ( false == $states ) {
@@ -253,9 +370,12 @@ abstract class Davestastes {
     $state = false;
 
     foreach ($states as $key => $row) {
-      if ($row[$stateArr['statefield']] == $stateArr['value']) {
+      if (strtolower($row[$stateArr['field']]) == strtolower($stateArr['value'])) {
         $state = $row;
       }
+    }
+    if (!$state) {
+      return array('statecode' => $stateArr['value']);
     }
     return $state;
   }
@@ -298,7 +418,7 @@ abstract class Davestastes {
     global $post;
 
     if ($post->post_type == 'davestates_statemap') {
-      $single_template = dirname( __FILE__ ) . '/templates/single-davestates-statemap-template.php';
+      $single_template = DAVESTATES_ABSPATH . 'templates/single-davestates-statemap-template.php';
     }
     return $single_template;
   }

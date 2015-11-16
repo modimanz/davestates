@@ -24,7 +24,7 @@ define( 'DAVESTATES_BASENAME', plugin_basename( DAVESTATES__FILE__ ) );
 /**
  * Load Includes which holds common functions and variables.
  */
-require_once DAVESSTATES_ABSPATH . 'classes/class-davestates.php';
+require_once DAVESTATES_ABSPATH . 'classes/class-davestates.php';
 
 // Start up TablePress on WordPress's "init" action hook.
 add_action( 'init', array( 'Davestates', 'run' ) );
