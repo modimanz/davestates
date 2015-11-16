@@ -6,12 +6,13 @@
  * Time: 8:54 AM
  */
 
-// TODO Create Filter functions for Tablepress tables / State
-// TODO Create shortcode caller for Tablespress State Tables
 // TODO Create metabox to select Tablepress tables to link to Map
-// TODO Modify Statemap Page to call Shortcodes for Table_Ids / State
 // TODO Use meta fields to add the statemap settings
-// TODO Use CSS to Hide the First Column of data
+
+// Modified Statemap Page to call Shortcodes for Table_Ids / State
+// Created shortcode caller for Tablespress State Tables
+// Created Filter functions for Tablepress tables / State
+// Using CSS to Hide the First Column of data
 
 
 // Security
@@ -24,9 +25,7 @@ abstract class Davestates {
 
   const db_version = '0.1.0';
 
-
   public static function run() {
-
     /**
      * Fires when davestates is loaded
      */
@@ -55,10 +54,15 @@ abstract class Davestates {
     // On Deactivate
     register_deactivation_hook(__FILE__, array('Davestates', 'deactivate'));
 
-    add_action('tablepress_run', array('Davestates', 'tablepress_init'));
-
+    //add_action('tablepress_run', array('Davestates', 'tablepress_init'));
+    add_filter( 'tablepress_table_raw_render_data', array( __CLASS__, 'table_filter_rows' ), 10, 2 );
+    add_filter( 'tablepress_shortcode_table_default_shortcode_atts', array( __CLASS__, 'shortcode_attributes' ) );
   }
 
+  /**
+   * Not needed unless moving back to init
+   * TODO might delete this function
+   */
   public static function tablepress_init() {
     add_filter( 'tablepress_table_raw_render_data', array( __CLASS__, 'table_filter_rows' ), 10, 2 );
     add_filter( 'tablepress_shortcode_table_default_shortcode_atts', array( __CLASS__, 'shortcode_attributes' ) );
@@ -108,7 +112,6 @@ abstract class Davestates {
     return $url;
   }
 
-
   /**
    * Adds the statemap html code to the_content of the statemap
    *
@@ -132,7 +135,7 @@ abstract class Davestates {
   /**
    * Adds the States Data Page to the_content of the statemap so we don't need a template
    *
-   * @param $content
+  + * @param $content
    * @return string
    */
   public static function statemap_data_content($content) {
@@ -141,8 +144,6 @@ abstract class Davestates {
 
     $postid = $post->ID;
     $statename = get_query_var('state');
-
-
 
     $state = self::get_state($statename);
     $statecode = "Code: " . $state['statecode']." Name: " . $statename;
@@ -154,38 +155,44 @@ abstract class Davestates {
       $tableshtml = '';
 
       foreach ($tables as $tid => $tablename) {
+        // DEBUG CODE BELOW
+        $table = TablePress::$controller->model_table->load($tid);
+        $data = print_r($table['data'],1);
+
         $tablecode = sprintf("[table id=%s state=%s /]", $tid, $statename);
 
         $tableshtml = sprintf("%s<div class='entry-content'>
                 %s
-           </div>", $tableshtml, $tablecode);
+           </div>", $tableshtml, $statecode." ".$statename." ".$tablecode);
       }
     }
 
-    $content = sprintf("%s %s", $content, $tableshtml);
+    $content = sprintf("%s %s %s", $content, $tableshtml, $data);
 
     return $content;
-  }
-
-  /**
-   * Generates the States Data Page for the statemap posts
-   *
-   * @param $statecode
-   * @param $postid
-   * @return string
-   */
-  public static function statemap_statedata_page($statecode, $postid) {
-    return "<div class='entry-content'>
-                <span>".$statecode."</span>
-                <span>".$postid."</span>
-            </div>";
   }
 
   /**
    * Meta fields for statemap
    */
   public static function statemap_meta_fields() {
+    add_meta_box('davestates_statemap_tableids', "Included Table",
+      array(__CLASS__,'metabox_statemap_tableids', 'davestates_statemap',
+        'normal', 'default'));
+  }
 
+  /**
+   * TODO Finish the tableid metabox
+   */
+  public static function metabox_statemap_tableids() {
+    global $post;
+
+    echo '<input type="hidden" name="davestates_statemap_meta_noncename"'.
+    ' id="davestates_statemap_meta_noncename" value="' .
+      wp_create_nonce(DAVESTATES_BASENAME). '" />';
+
+    $tableids = get_post_meta($post->ID, '_tableids');
+    echo '<input type="" />';
   }
 
   /**
@@ -193,69 +200,84 @@ abstract class Davestates {
    *
    * @param $postid integer
    *
-   *  TODO Filter for tables that have a first column named State
+   * TODO Filter Tables by Postid
    *
    * @return array
    */
-  public static function get_tablepress_tables($postid) {
+  public static function get_tablepress_tables($postid = false) {
 
-    // TODO cache the table function
-    //$tablesArr = wp_cache_get('davestates_tables','davestates');
+    if (!$postid) $postid = "";
+
+    // Cache the table function
+    $tablesArr = wp_cache_get(sprintf('davestates_tables%s',$postid),'davestates');
+
+    if ($tablesArr) return $tablesArr;
 
     $tables = TablePress::$controller->model_table->load_all();
 
     $tablesArr = array();
-
 
     foreach ($tables as $table_id ) {
       // Load each wordpress table
       $table = TablePress::$controller->model_table->load($table_id);
       // Get the name of each table and it's ID as an array to return
 
-      //$stateheader = $table['data'][0][0];
+      $stateheader = $table['data'][0][0];
 
       // filter to only show tables with a column 1 name = State
-      //if (stripos($stateheader, 'state')) {
+      if (false !== stripos($stateheader, "State")) {
         $tablesArr[$table_id] = $table['name'];
-      //}
-
-
+      }
     }
 
+    wp_cache_add(sprintf('davestates_tables%s', $postid), 'davestates', 300);
     return $tablesArr;
   }
 
   /**
    * Filter the table data to remove rows that do not contain $statename
    *
+   * TODO Add ability to lookup multiple states
+   *
    * @param $data
    * @param $states
    */
-  public static function table_filter_rows($table, $options) {
+  public static function table_filter_rows($table, $render_options) {
 
-    if (empty($options['states'])) {
+    if (empty($render_options['state'])) {
       return $table;
     }
 
-    $states = explode( ',', $options['states']);
+    $state = $render_options['state'];
+
+    //$states = explode( ',', $options['states']);
 
     $rows = $table['data'];
 
+    $last_row_key = count( $rows ) - 1;
     foreach ($rows as $key => $row) {
-      if ($key == 0) {
+      if ($key === 0 && $render_options['table_head']) {
         continue;
       }
-
-      foreach($states as $state) {
-        if (stripos($row[0], $state) != false) {
+      if ( $last_row_key === $key && $render_options['table_foot'] ) {
+        continue;
+      }
+      //foreach($states as $state) {
+        if (stripos($row[0], $state) === false) {
           $hidden_rows[] = $key;
         }
-      }
+      //}
     }
     foreach ($hidden_rows as $key) {
       unset( $table['data'][$key] );
       unset( $table['visibility']['rows'][$key]);
     }
+
+    // Reset array keys.
+    $table['data'] = array_merge( $table['data'] );
+    $table['visibility']['rows'] = array_merge( $table['visibility']['rows'] );
+
+    if (count($table['data']) == 0) return false;
 
     return $table;
   }
@@ -270,8 +292,6 @@ abstract class Davestates {
     $attr['state'] = 'all';
     return $attr;
   }
-
-
 
   /**
    * Load Script and Stylesheet for custom Post Type
@@ -309,8 +329,6 @@ abstract class Davestates {
     }
   }
 
-
-
   /**
    * Rewrite rules for individual states on a statemap
    *
@@ -341,14 +359,9 @@ abstract class Davestates {
    * @return array|bool|mixed|null|object
    */
   public static function get_states() {
-    //wp_cache_add
-
-    // TODO Cache this function
+    // Cache this function
     $states = wp_cache_get('davestates_states','davestates');
 
-    $states = false;
-
-    //$states = false;
     if ( false == $states ) {
       global $wpdb;
       $sql = "SELECT * FROM {$wpdb->prefix}davestates";
@@ -389,23 +402,23 @@ abstract class Davestates {
   public static function sanitize_state($state) {
     // Sanitize the state arg
     if (!$state) {
-      $statefield = false;
+      $field = false;
     }
     elseif (is_int($state)) {
-      $statefield = 'id';
+      $field = 'id';
     } elseif (strlen($state) == 2) {
-      $statefield = 'statecode';
+      $field = 'statecode';
     } elseif (strlen($state) > 3) {
-      $statefield = 'name';
+      $field = 'name';
     } elseif (is_array($state)) {
       $state_arr = $state;
       $state = $state_arr['statecode'];
-      $statefield = 'statecode';
+      $field = 'statecode';
     } else {
-      $statefield = false;
+      $field = false;
     }
 
-    return array('value' => $state, 'field' => $statefield);
+    return array('value' => $state, 'field' => $field);
   }
 
   /**

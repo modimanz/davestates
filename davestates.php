@@ -27,7 +27,7 @@ define( 'DAVESTATES_BASENAME', plugin_basename( DAVESTATES__FILE__ ) );
 require_once DAVESTATES_ABSPATH . 'classes/class-davestates.php';
 
 // Start up TablePress on WordPress's "init" action hook.
-add_action( 'init', array( 'Davestates', 'run' ) );
+add_action( 'tablepress_run', array( 'Davestates', 'run' ) );
 
 // Include Settings Pages
 // TODO create urls to admin pages
