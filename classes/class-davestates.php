@@ -14,7 +14,7 @@
 // Created Filter functions for Tablepress tables / State
 // Using CSS to Hide the First Column of data
 
-
+//define('WP_DEBUG', true);
 // Security
 // Block direct access to the plugin
 defined( 'ABSPATH' ) or die( 'Action not allowed bub.' );
@@ -49,7 +49,10 @@ abstract class Davestates {
     add_filter('query_vars', array('Davestates','statemap_rewrite_query_vars'));
 
     // On Deactivate
-    register_deactivation_hook(__FILE__, array('Davestates', 'deactivate'));
+    //register_deactivation_hook(__FILE__, array('Davestates', 'deactivate'));
+
+    add_action('add_meta_boxes', array('Davestates', 'statemap_meta_fields'));
+    add_action('save_post', array('Davestates', 'save_statemap_tableids'));
 
     //add_action('tablepress_run', array('Davestates', 'tablepress_init'));
     add_filter( 'tablepress_table_raw_render_data', array( __CLASS__, 'table_filter_rows' ), 10, 2 );
@@ -149,7 +152,7 @@ abstract class Davestates {
 
     if ($post->post_type == 'davestates_statemap') {
 
-      $tables = self::get_tablepress_tables($post->ID);
+      $tables = self::get_tablepress_tables();
 
       foreach ($tables as $tid => $tablename) {
         // DEBUG CODE BELOW
@@ -173,9 +176,14 @@ abstract class Davestates {
    * Meta fields for statemap
    */
   public static function statemap_meta_fields() {
-    add_meta_box('davestates_statemap_tableids', "Included Table",
-      array(__CLASS__,'metabox_statemap_tableids', 'davestates_statemap',
-        'normal', 'default'));
+    add_meta_box(
+      'davestates_statemap_tableids',
+      "Included Tables",
+      array(__CLASS__,'metabox_statemap_tableids'),
+      'davestates_statemap',
+      'normal',
+      'default'
+    );
   }
 
   /**
@@ -188,8 +196,57 @@ abstract class Davestates {
     ' id="davestates_statemap_meta_noncename" value="' .
       wp_create_nonce(DAVESTATES_BASENAME). '" />';
 
-    $tableids = get_post_meta($post->ID, '_tableids');
-    echo '<input type="" />';
+    wp_nonce_field('davestates_statemap_meta_action', 'davestates_statesmap_meta_field');
+
+    $checkboxMeta = get_post_meta($post->ID);
+
+    //$tableids = get_post_meta($post->ID, '_tableids');
+
+    $tables = self::get_tablepress_tables();
+
+    foreach ($tables as $tableid => $tablename) {
+
+      $stable = "davestates-".sanitize_title_with_dashes($tablename);
+      $checked = isset($checkboxMeta[$stable]) ? checked($checkboxMeta[$stable][0], 'yes', false) : '';
+      echo sprintf(
+        '<input type="checkbox" name="%s" id="%s" value="%s" %s/>%s<br />',
+        $stable,
+        $stable,
+        $tableid,
+        $checked,
+        $tablename);
+    }
+
+
+  }
+
+  public static function save_statemap_tableids( $post_id) {
+    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE )
+      return;
+    if ( ( isset ( $_POST['davestates_statemap_meta_action'] ) ) && ( ! wp_verify_nonce( $_POST['davestates_statesmap_meta_field\''], plugin_basename( __FILE__ ) ) ) )
+      return;
+    if ( ( isset ( $_POST['post_type'] ) ) && ( 'davestates_statemap' == $_POST['post_type'] )  ) {
+      if ( ! current_user_can( 'edit_page', $post_id ) ) {
+        return;
+      }
+    } else {
+      if ( ! current_user_can( 'edit_post', $post_id ) ) {
+        return;
+      }
+    }
+
+    $tables = self::get_tablepress_tables();
+
+    foreach ($tables as $tableid => $tablename) {
+      //saves bob's value
+      $stable = "davestates-".sanitize_title_with_dashes($tablename);
+      if( isset( $_POST[ $stable ] ) ) {
+        update_post_meta( $post_id, $stable, 'yes' );
+      } else {
+        update_post_meta( $post_id, $stable, 'no' );
+      }
+    }
+
   }
 
   /**

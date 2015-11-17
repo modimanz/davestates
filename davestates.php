@@ -31,7 +31,11 @@ add_action( 'tablepress_run', array( 'Davestates', 'run' ) );
 
 // Include Settings Pages
 // TODO create urls to admin pages
-include( DAVESTATES_ABSPATH . 'settings.php');
+//include( DAVESTATES_ABSPATH . 'settings.php');
 
 // Include Install Functions
 include( DAVESTATES_ABSPATH . 'install.php');
+//include( DAVESTATES_ABSPATH . 'deactivate.php');
+
+//register_activation_hook(__FILE__, array(‘Davestates’,’activate’));
+//register_deactivation_hook(__FILE__, 'davestates_deactivate');
