@@ -48,9 +48,6 @@ abstract class Davestates {
     add_filter('rewrite_rules_array', array('Davestates', 'statemap_rewrite_rules'));
     add_filter('query_vars', array('Davestates','statemap_rewrite_query_vars'));
 
-    // Templates
-    add_filter( 'single_template', array('Davestates', 'get_statemap_template'));
-
     // On Deactivate
     register_deactivation_hook(__FILE__, array('Davestates', 'deactivate'));
 
@@ -92,7 +89,7 @@ abstract class Davestates {
         'has_archive' => true,
         'rewrite' => array('slug' => 'statemap'),
         'supports' => array( 'title', 'editor', 'thumbnail', 'revisions' ),
-        'register_meta_box_cb' => 'davestates_statemap_metaboxes'
+        //'register_meta_box_cb' => 'davestates_statemap_metaboxes'
       )
     );
 
@@ -148,11 +145,11 @@ abstract class Davestates {
     $state = self::get_state($statename);
     $statecode = "Code: " . $state['statecode']." Name: " . $statename;
 
+    $tableshtml = '';
+
     if ($post->post_type == 'davestates_statemap') {
 
       $tables = self::get_tablepress_tables($post->ID);
-
-      $tableshtml = '';
 
       foreach ($tables as $tid => $tablename) {
         // DEBUG CODE BELOW
@@ -167,7 +164,7 @@ abstract class Davestates {
       }
     }
 
-    $content = sprintf("%s %s %s", $content, $tableshtml, $data);
+    $content = sprintf("%s %s", $content, $tableshtml);
 
     return $content;
   }
@@ -317,13 +314,19 @@ abstract class Davestates {
       $statename = get_query_var('state');
       $state = self::get_state($statename);
 
+      if ($state === false) {
+        $statecode = '';
+      } else {
+        $statecode = $state['statecode'];
+      }
+
       wp_register_script('davestates-statemap-script', plugin_dir_url($dir) . "js/statemap.js", array('jquery'));
       wp_localize_script('davestates-statemap-script', 'statemap_params', array(
         'hoverColor' => '#3300ff',
         'backgroundColor' => '#000000',
         'selectedColor' => '#0033ff',
         'statemapUrl' => get_permalink($post->ID),
-        'statecode' => $state['statecode']
+        'statecode' => $statecode
       ));
       wp_enqueue_script('davestates-statemap-script');
     }
@@ -363,9 +366,60 @@ abstract class Davestates {
     $states = wp_cache_get('davestates_states','davestates');
 
     if ( false == $states ) {
-      global $wpdb;
-      $sql = "SELECT * FROM {$wpdb->prefix}davestates";
-      $states = $wpdb->get_results($sql, 'ARRAY_A');
+      $states = array(
+        'Alabama' => 'AL',
+        'Alaska' => 'AK',
+        'Arizona' => 'AZ',
+        'Arkansas' => 'AR',
+        'California' => 'CA',
+        'Colorado' => 'CO',
+        'Connecticut' => 'CT',
+        'Delaware' => 'DE',
+        'District of Columbia' => 'DC',
+        'Florida' => 'FL',
+        'Georgia' => 'GA',
+        'Hawaii' => 'HI',
+        'Idaho' => 'ID',
+        'Illinois' => 'IL',
+        'Indiana' => 'IN',
+        'Iowa' => 'IA',
+        'Kansas' => 'KS',
+        'Kentucky' => 'KY',
+        'Louisiana' => 'LA',
+        'Maine' => 'ME',
+        'Maryland' => 'MD',
+        'Massachusetts' => 'MA',
+        'Michigan' => 'MI',
+        'Minnesota' => 'MN',
+        'Mississippi' => 'MS',
+        'Missouri' => 'MO',
+        'Montana' => 'MT',
+        'Nebraska' => 'NE',
+        'Nevada' => 'NV',
+        'New Hampshire' => 'NH',
+        'New Jersey' => 'NJ',
+        'New Mexico' => 'NM',
+        'New York' => 'NY',
+        'North Carolina' => 'NC',
+        'North Dakota' => 'ND',
+        'Ohio' => 'OH',
+        'Oklahoma' => 'OK',
+        'Oregon' => 'OR',
+        'Pennsylvania' => 'PA',
+        'Rhode Island' => 'RI',
+        'South Carolina' => 'SC',
+        'South Dakota' => 'SD',
+        'Tennessee' => 'TN',
+        'Texas' => 'TX',
+        'Utah' => 'UT',
+        'Vermont' => 'VT',
+        'Virginia' => 'VA',
+        'Washington' => 'WA',
+        'West Virginia' => 'WV',
+        'Wisconsin' => 'WI',
+        'Wyoming' => 'WY',
+        'United States' => 'US');
+
       wp_cache_add('davestates_states', $states, 'davestates');
     }
     return $states;
@@ -377,68 +431,34 @@ abstract class Davestates {
    * @param $state
    * @return bool
    */
-  public static function get_state($state) {
-    $stateArr = self::sanitize_state($state);
-    $states = self::get_states();
-    $state = false;
+  public static function get_state($value) {
+    if (!$value || strlen($value) < 2) {
+      return false;
+    }
 
-    foreach ($states as $key => $row) {
-      if (strtolower($row[$stateArr['field']]) == strtolower($stateArr['value'])) {
-        $state = $row;
-      }
+    $states = self::get_states();
+
+    $statecode = '';
+    $name = '';
+
+    if (strlen($value) == 2) {
+      // This is a statecode get name
+      $states = array_flip ($states);
+      $code = strtoupper($value);
+      $name = $states[$code];
+    } elseif (strlen($value) > 2) {
+      // This is a name get statecode
+      $name = ucwords($value);
+      $code = $states[$name];
     }
-    if (!$state) {
-      return array('statecode' => $stateArr['value']);
-    }
+
+    $state =  array('name' => $name, 'statecode' => $code);
+
     return $state;
   }
 
   /**
-   * Sanitize the state ojbect lookup call
-   *
-   * @param $state
-   * @return array
-   */
-  public static function sanitize_state($state) {
-    // Sanitize the state arg
-    if (!$state) {
-      $field = false;
-    }
-    elseif (is_int($state)) {
-      $field = 'id';
-    } elseif (strlen($state) == 2) {
-      $field = 'statecode';
-    } elseif (strlen($state) > 3) {
-      $field = 'name';
-    } elseif (is_array($state)) {
-      $state_arr = $state;
-      $state = $state_arr['statecode'];
-      $field = 'statecode';
-    } else {
-      $field = false;
-    }
-
-    return array('value' => $state, 'field' => $field);
-  }
-
-  /**
-   * Template Filter for Custom Post Type
-   *
-   * @param $single_template
-   * @return string
-   */
-  public static function get_statemap_template($single_template) {
-    global $post;
-
-    if ($post->post_type == 'davestates_statemap') {
-      $single_template = DAVESTATES_ABSPATH . 'templates/single-davestates-statemap-template.php';
-    }
-    return $single_template;
-  }
-
-
-  /**
-   * Fire on Deactive Plugin
+   * Fire on Deactivate Plugin
    */
   public static function deactivate() {
     $option_name = 'davestates_db_version';
