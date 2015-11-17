@@ -55,3 +55,8 @@
   width: 100%;
   height: 500px;
 }
+
+
+.column-1 {
+    display: none;
+}
