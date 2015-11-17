@@ -56,8 +56,8 @@ class Davestates_StateData {
    * @return bool
    */
   public static function get_state($state) {
-    $stateArr = Davestates_StateData::sanitize_state($state);
-    $states = Davestates_StateData::get_states();
+    $stateArr = self::sanitize_state($state);
+    $states = self::get_states();
     $state = false;
 
     foreach ($states as $key => $row) {
