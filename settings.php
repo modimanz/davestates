@@ -79,7 +79,6 @@ class DaveStatesSettingsPage
     $new_input = array();
     if( isset( $input['davestatestest'] ) )
       $new_input['davestatestest'] = sanitize_text_field( $input['title'] );
-
     return $new_input;
   }
 
