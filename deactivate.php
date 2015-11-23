@@ -15,7 +15,7 @@
   //delete_site_option( $option_name );
 
   //drop a custom db table
-  global $wpdb;
+  /*global $wpdb;
 
   $e = $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}davestates" );
   die(var_dump($e));
@@ -32,7 +32,8 @@
 
   $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}davestatespages" );
   $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}davestatesreferences" );
-//}
+  */
+  //}
 //note in multisite looping through blogs to delete options on each blog does not scale. You'll just have to leave them.
 
 //register_deactivation_hook(__FILE__, 'davestates_deactivate');

@@ -27,37 +27,49 @@ class DaveStates_List extends Davestates_List_Table {
    * @return mixed
    */
   public static function get_states($per_page = 100, $page_number = 1) {
-    global $wpdb;
+    //global $wpdb;
 
-    $sql = "SELECT * FROM {$wpdb->prefix}davestates";
+    $states = Davestates::get_states();
 
     if (!empty ($_REQUEST['orderby'])) {
-      $sql .= ' ORDER BY ' . esc_sql($_REQUEST['orderby']);
-      $sql .= !empty($_REQUEST['order']) ? ' ' . esc_sql($_REQUEST['order']) : ' ASC';
+      //$sql .= ' ORDER BY ' . esc_sql($_REQUEST['orderby']);
+      //$sql .= !empty($_REQUEST['order']) ? ' ' . esc_sql($_REQUEST['order']) : ' ASC';
+
+      if  (!empty($_REQUEST['order'])) {
+        $flags = $_REQUEST['order'] == 'DESC' ? SORT_NATURAL | SORT_DESC : SORT_NATURAL | SORT_ASC;
+      } else {
+        $flags = SORT_NATURAL | SORT_ASC;
+      }
+
+      switch ($_REQUEST['orderby']) {
+        case 'statename':
+          ksort($states, $flags);
+          break;
+        case 'statecode':
+          sort($state, $flags);
+          break;
+      }
     }
 
-    $sql .= " LIMIT $per_page";
-
-    $sql .= ' OFFSET ' . ($page_number - 1) * $per_page;
-
-    $result = $wpdb->get_results($sql, 'ARRAY_A');
+    $offset = ($page_number - 1) * $per_page;
+    $result = array_slice($states, $offset, $per_page, true);
 
     return $result;
   }
 
   /**
-   * Delete a state record.
+   * Delete a state record. Cannot do this
    *
    * @param $id
    */
   public static function delete_state($id) {
-    global $wpdb;
+    /*global $wpdb;
 
     $wpdb->delete(
       "{$wpdb->prefix}davestates",
       ['id' => $id],
       ['%d']
-    );
+    );*/
   }
 
   /**
@@ -66,11 +78,8 @@ class DaveStates_List extends Davestates_List_Table {
    * @return null|string
    */
   public static function record_count() {
-    global $wpdb;
-
-    $sql = "SELECT COUNT(*) FROM {$wpdb->prefix}davestates";
-
-    return $wpdb->get_var($sql);
+    $states = Davestates::get_states();
+    return count($states);
   }
 
   public function no_items() {

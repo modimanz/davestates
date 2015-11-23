@@ -145,20 +145,21 @@ abstract class Davestates {
     global $post;
     $postid = $post->ID;
     $statename = get_query_var('state');
-    $state = self::get_state($statename);
-    $statecode = "Code: " . $state['statecode']." Name: " . $statename;
+    $statename = preg_replace('/\-/', ' ', $statename );
+    //$state = self::get_state($statename);
+    //$statecode = $state;
     $tableshtml = '';
 
     if ($post->post_type == 'davestates_statemap') {
       $tables = self::get_tablepress_tables($postid);
       foreach ($tables as $tid => $tablename) {
         // DEBUG CODE BELOW
-        $table = TablePress::$controller->model_table->load($tid);
-        $data = print_r($table['data'],1);
-        $tablecode = sprintf("[table id=%s state=%s /]", $tid, $statename);
+        //$table = TablePress::$controller->model_table->load($tid);
+        //$data = print_r($table['data'],1);
+        $tablecode = sprintf("[table id=%s davestates-state='%s' /]", $tid, $statename);
         $tableshtml = sprintf("%s<div class='entry-content'>
                 %s
-           </div>", $tableshtml, $statecode." ".$statename." ".$tablecode);
+           </div>", $tableshtml, $tablecode);
       }
     }
     $content = sprintf("%s %s", $content, $tableshtml);
@@ -193,6 +194,11 @@ abstract class Davestates {
 
     $checkboxMeta = get_post_meta($post->ID);
 
+    $selectedTableIds = isset($checkboxMeta['davestates_tableids']) ?
+      unserialize($checkboxMeta['davestates_tableids'][0]) : array();
+
+    //if (!is_array($selectedTableIds)) $selectedTableIds = array();
+
     //$tableids = get_post_meta($post->ID, '_tableids');
 
     $tables = self::get_tablepress_tables();
@@ -200,14 +206,14 @@ abstract class Davestates {
     foreach ($tables as $tableid => $tablename) {
 
       $stable = "davestates-table--".sanitize_title_with_dashes($tablename);
-      $checked = isset($checkboxMeta[$stable]) ? checked($checkboxMeta[$stable][0], true , false) : '';
+      $checked = in_array($tableid, $selectedTableIds) ? checked(true, true , false) : '';
       echo sprintf(
         '<input type="checkbox" name="%s" id="%s" value="%s" %s/>%s<br />',
         $stable,
         $stable,
         $tableid,
         $checked,
-        $tablename);
+        $tablename.print_r($selectedTableIds, 1));
     }
   }
 
@@ -234,16 +240,21 @@ abstract class Davestates {
     if ( ( isset ( $_POST['post_type'] ) ) && ( 'davestates_statemap' == $_POST['post_type'] )  ) {
       $tables = self::get_tablepress_tables();
 
+      $selected_tables = array();
+      //get_post_me
       foreach ($tables as $tableid => $tablename) {
         //saves bob's value
         $stable = "davestates-table--" . sanitize_title_with_dashes($tablename);
         if (isset($_POST[$stable])) {
-          update_post_meta($post_id, $stable, $tableid);
+          $selected_tables[] = $tableid;
+          //update_post_meta($post_id, $stable, $tableid);
         }
-        else {
-          update_post_meta($post_id, $stable, 0);
-        }
+        //else {
+        //  update_post_meta($post_id, $stable, 0);
+        //}
       }
+
+      update_post_meta($post_id, 'davestates_tableids', array_map('sanitize_text_field', $selected_tables));
 
       wp_cache_delete(sprintf('davestates_tables%s',$post_id),'davestates');
     }
@@ -265,29 +276,31 @@ abstract class Davestates {
     } else {
       $postidtag = $postid;
       // Load the Selected Table Ids from
-      $checkboxMeta = get_post_meta($postid);
-      foreach ($checkboxMeta as $key => $checkboxValue) {
-        if (strpos($key, 'davestates-table--') === false) {
-          continue;
-        }
-        $postTableIDs[$key] = $checkboxValue[0];
+      //$checkboxMeta = get_post_meta($postid);
+      //$selectedTableIds = isset($checkboxMeta['davestates_tableid']) ?
+      //  unserialize($checkboxMeta['davestates_tableid'][0]) : array();
+
+      if ( in_array('davestates_tableids', get_post_custom_keys($postid))) {
+        $selectedTableIds = reset(get_post_meta($postid, 'davestates_tableids'));
       }
     }
 
     // Cache the table function
     $tablesArr = wp_cache_get(sprintf('davestates_tables%s',$postidtag),'davestates');
 
-    if ($tablesArr) return $tablesArr;
+    //if ($tablesArr) return $tablesArr;
 
     $tables = TablePress::$controller->model_table->load_all();
 
     $tablesArr = array();
-
+    //echo $postid.$selectedTableIds;
+    //print_r($selectedTableIds);
     foreach ($tables as $table_id ) {
       // If PostID is found then only load tables that are selected
-      if ($postid && !in_array($table_id, $postTableIDs, true)) {
-
-        continue;
+      if ($postid !== false) {
+       if (in_array($table_id, $selectedTableIds) === false) {
+         continue;
+       }
       }
 
       // Load each wordpress table
@@ -319,34 +332,40 @@ abstract class Davestates {
   public static function table_filter_rows($table, $render_options) {
 
     if (is_singular('davestates_statemap')) {
-      if (empty($render_options['state'])) {
+      if (empty($render_options['davestates-state'])) {
+        return $table;
+      } elseif ($render_options['davestates-state'] == 'all') {
         return $table;
       }
 
-      $state = $render_options['state'];
+
+
+      $state = $render_options['davestates-state'];
+      $state = preg_replace('/\-/', ' ', $state );
 
       //$states = explode( ',', $options['states']);
 
       $rows = $table['data'];
 
+      $pattern = '/\{State\}/';
+
       $last_row_key = count($rows) - 1;
       foreach ($rows as $key => $row) {
-        if ($key === 0 && $render_options['table_head']) {
+
+        // Look through each $column for the {State} value and replace it
+        foreach( $row as $colKey => $column) {
+          $table['data'][$key][$colKey] = ucwords(preg_replace($pattern, $state , $column, 1));
+        }
+
+        if (($key === 0 && $render_options['table_head']) ||
+          ($last_row_key === $key && $render_options['table_foot']) ||
+          (stripos($row[0], 'united states') !== false)) { // TODO Allow Data for USA or All as state
           continue;
         }
-        if ($last_row_key === $key && $render_options['table_foot']) {
-          continue;
-        }
-        // TODO Allow Data for USA or All as state
-        if (stripos($row[0], 'United States')) {
-          continue;
-        }
-        //foreach($states as $state) {
 
         if (stripos($row[0], $state) === false) {
           $hidden_rows[] = $key;
         }
-        //}
       }
       foreach ($hidden_rows as $key) {
         unset($table['data'][$key]);
@@ -372,7 +391,7 @@ abstract class Davestates {
    * @return mixed
    */
   public static function shortcode_attributes( $attr ) {
-    $attr['state'] = 'all';
+    $attr['davestates-state'] = 'all';
     return $attr;
   }
 
@@ -524,7 +543,7 @@ abstract class Davestates {
 
     $states = self::get_states();
 
-    $statecode = '';
+    $code = '';
     $name = '';
 
     if (strlen($value) == 2) {
@@ -534,7 +553,8 @@ abstract class Davestates {
       $name = $states[$code];
     } elseif (strlen($value) > 2) {
       // This is a name get statecode
-      $name = ucwords($value);
+      $name = preg_replace('/\-/', ' ', $value );
+      $name = ucwords($name);
       $code = $states[$name];
     }
 
@@ -550,18 +570,5 @@ abstract class Davestates {
     $option_name = 'davestates_db_version';
     delete_option( $option_name );
 
-    // For site options in multisite
-    //delete_site_option( $option_name );
-    //drop a custom db table
-    global $wpdb;
-
-    $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}davestatessubcategory" );
-    $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}davestatessubcategories" );
-    $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}davestatesdata" );
-    $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}davestatesreferences" );
-    $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}davestates" );
-    $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}davestatespages" );
-    $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}davestatescategories" );
-    $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}davestatescategory" );
   }
 }

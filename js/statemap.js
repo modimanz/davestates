@@ -2,7 +2,7 @@ jQuery(document).ready(function () {
     //alert(statemap_params.hoverColor);
 
     url = statemap_params.statemapUrl;
-    statecode = statemap_params.statecode;
+    statecode = (typeof statemap_params.statecode === 'undefined') ? '' : statemap_params.statecode;
 
     //alert(url);
     if (statecode.length != 2) {
@@ -12,7 +12,6 @@ jQuery(document).ready(function () {
         statecode = [statecode];
         //alert('test');
     }
-
 
     jQuery('#vmap').vectorMap({
         map: 'usa_en',
@@ -28,7 +27,7 @@ jQuery(document).ready(function () {
         showTooltip: true,
         selectedRegions: statecode,
         onRegionClick: function (event, code, region) {
-            window.location.replace(url + region.toLowerCase());
+            window.location.replace(url + region.toLowerCase().replace(/ /g, '-'));
         }
     });
 

@@ -35,6 +35,7 @@ add_action( 'tablepress_run', array( 'Davestates', 'run' ) );
 
 // Include Install Functions
 include( DAVESTATES_ABSPATH . 'install.php');
+
 //include( DAVESTATES_ABSPATH . 'deactivate.php');
 
 //register_activation_hook(__FILE__, array(‘Davestates’,’activate’));
