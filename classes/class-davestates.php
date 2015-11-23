@@ -25,6 +25,9 @@ abstract class Davestates {
 
   const db_version = '0.1.0';
 
+  /**
+   * Start Here
+   */
   public static function run() {
     /**
      * Fires when davestates is loaded
@@ -92,7 +95,7 @@ abstract class Davestates {
         'has_archive' => true,
         'rewrite' => array('slug' => 'statemap'),
         'supports' => array( 'title', 'editor', 'thumbnail', 'revisions' ),
-        //'register_meta_box_cb' => 'davestates_statemap_metaboxes'
+        'register_meta_box_cb' => array(__CLASS__, 'statemap_meta_fields')
       )
     );
 
@@ -139,36 +142,26 @@ abstract class Davestates {
    * @return string
    */
   public static function statemap_data_content($content) {
-
     global $post;
-
     $postid = $post->ID;
     $statename = get_query_var('state');
-
     $state = self::get_state($statename);
     $statecode = "Code: " . $state['statecode']." Name: " . $statename;
-
     $tableshtml = '';
 
     if ($post->post_type == 'davestates_statemap') {
-
-      $tables = self::get_tablepress_tables();
-
+      $tables = self::get_tablepress_tables($postid);
       foreach ($tables as $tid => $tablename) {
         // DEBUG CODE BELOW
         $table = TablePress::$controller->model_table->load($tid);
         $data = print_r($table['data'],1);
-
         $tablecode = sprintf("[table id=%s state=%s /]", $tid, $statename);
-
         $tableshtml = sprintf("%s<div class='entry-content'>
                 %s
            </div>", $tableshtml, $statecode." ".$statename." ".$tablecode);
       }
     }
-
     $content = sprintf("%s %s", $content, $tableshtml);
-
     return $content;
   }
 
@@ -187,7 +180,7 @@ abstract class Davestates {
   }
 
   /**
-   * TODO Finish the tableid metabox
+   * Create Statemap Post Specific Settings / Meta Fields
    */
   public static function metabox_statemap_tableids() {
     global $post;
@@ -206,8 +199,8 @@ abstract class Davestates {
 
     foreach ($tables as $tableid => $tablename) {
 
-      $stable = "davestates-".sanitize_title_with_dashes($tablename);
-      $checked = isset($checkboxMeta[$stable]) ? checked($checkboxMeta[$stable][0], 'yes', false) : '';
+      $stable = "davestates-table--".sanitize_title_with_dashes($tablename);
+      $checked = isset($checkboxMeta[$stable]) ? checked($checkboxMeta[$stable][0], true , false) : '';
       echo sprintf(
         '<input type="checkbox" name="%s" id="%s" value="%s" %s/>%s<br />',
         $stable,
@@ -216,10 +209,13 @@ abstract class Davestates {
         $checked,
         $tablename);
     }
-
-
   }
 
+  /**
+   * Save the Statemap Meta Data
+   *
+   * @param $post_id
+   */
   public static function save_statemap_tableids( $post_id) {
     if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE )
       return;
@@ -235,18 +231,22 @@ abstract class Davestates {
       }
     }
 
-    $tables = self::get_tablepress_tables();
+    if ( ( isset ( $_POST['post_type'] ) ) && ( 'davestates_statemap' == $_POST['post_type'] )  ) {
+      $tables = self::get_tablepress_tables();
 
-    foreach ($tables as $tableid => $tablename) {
-      //saves bob's value
-      $stable = "davestates-".sanitize_title_with_dashes($tablename);
-      if( isset( $_POST[ $stable ] ) ) {
-        update_post_meta( $post_id, $stable, 'yes' );
-      } else {
-        update_post_meta( $post_id, $stable, 'no' );
+      foreach ($tables as $tableid => $tablename) {
+        //saves bob's value
+        $stable = "davestates-table--" . sanitize_title_with_dashes($tablename);
+        if (isset($_POST[$stable])) {
+          update_post_meta($post_id, $stable, $tableid);
+        }
+        else {
+          update_post_meta($post_id, $stable, 0);
+        }
       }
-    }
 
+      wp_cache_delete(sprintf('davestates_tables%s',$post_id),'davestates');
+    }
   }
 
   /**
@@ -260,10 +260,22 @@ abstract class Davestates {
    */
   public static function get_tablepress_tables($postid = false) {
 
-    if (!$postid) $postid = "";
+    if (!$postid) {
+      $postidtag = "";
+    } else {
+      $postidtag = $postid;
+      // Load the Selected Table Ids from
+      $checkboxMeta = get_post_meta($postid);
+      foreach ($checkboxMeta as $key => $checkboxValue) {
+        if (strpos($key, 'davestates-table--') === false) {
+          continue;
+        }
+        $postTableIDs[$key] = $checkboxValue[0];
+      }
+    }
 
     // Cache the table function
-    $tablesArr = wp_cache_get(sprintf('davestates_tables%s',$postid),'davestates');
+    $tablesArr = wp_cache_get(sprintf('davestates_tables%s',$postidtag),'davestates');
 
     if ($tablesArr) return $tablesArr;
 
@@ -272,6 +284,12 @@ abstract class Davestates {
     $tablesArr = array();
 
     foreach ($tables as $table_id ) {
+      // If PostID is found then only load tables that are selected
+      if ($postid && !in_array($table_id, $postTableIDs, true)) {
+
+        continue;
+      }
+
       // Load each wordpress table
       $table = TablePress::$controller->model_table->load($table_id);
       // Get the name of each table and it's ID as an array to return
@@ -284,7 +302,7 @@ abstract class Davestates {
       }
     }
 
-    wp_cache_add(sprintf('davestates_tables%s', $postid), 'davestates', 300);
+    wp_cache_add(sprintf('davestates_tables%s', $postidtag), 'davestates', 300);
     return $tablesArr;
   }
 
@@ -293,47 +311,58 @@ abstract class Davestates {
    *
    * TODO Add ability to lookup multiple states
    *
-   * @param $data
-   * @param $states
+   * @param $table
+   * @param $render_options
+   *
+   * @return array
    */
   public static function table_filter_rows($table, $render_options) {
 
-    if (empty($render_options['state'])) {
-      return $table;
-    }
-
-    $state = $render_options['state'];
-
-    //$states = explode( ',', $options['states']);
-
-    $rows = $table['data'];
-
-    $last_row_key = count( $rows ) - 1;
-    foreach ($rows as $key => $row) {
-      if ($key === 0 && $render_options['table_head']) {
-        continue;
+    if (is_singular('davestates_statemap')) {
+      if (empty($render_options['state'])) {
+        return $table;
       }
-      if ( $last_row_key === $key && $render_options['table_foot'] ) {
-        continue;
-      }
-      //foreach($states as $state) {
+
+      $state = $render_options['state'];
+
+      //$states = explode( ',', $options['states']);
+
+      $rows = $table['data'];
+
+      $last_row_key = count($rows) - 1;
+      foreach ($rows as $key => $row) {
+        if ($key === 0 && $render_options['table_head']) {
+          continue;
+        }
+        if ($last_row_key === $key && $render_options['table_foot']) {
+          continue;
+        }
+        // TODO Allow Data for USA or All as state
+        if (stripos($row[0], 'United States')) {
+          continue;
+        }
+        //foreach($states as $state) {
+
         if (stripos($row[0], $state) === false) {
           $hidden_rows[] = $key;
         }
-      //}
+        //}
+      }
+      foreach ($hidden_rows as $key) {
+        unset($table['data'][$key]);
+        unset($table['visibility']['rows'][$key]);
+      }
+
+      // Reset array keys.
+      $table['data'] = array_merge($table['data']);
+      $table['visibility']['rows'] = array_merge($table['visibility']['rows']);
+
+      if (count($table['data']) == 0) {
+        return false;
+      }
     }
-    foreach ($hidden_rows as $key) {
-      unset( $table['data'][$key] );
-      unset( $table['visibility']['rows'][$key]);
-    }
-
-    // Reset array keys.
-    $table['data'] = array_merge( $table['data'] );
-    $table['visibility']['rows'] = array_merge( $table['visibility']['rows'] );
-
-    if (count($table['data']) == 0) return false;
-
     return $table;
+
   }
 
   /**
@@ -485,7 +514,7 @@ abstract class Davestates {
   /**
    * Get a state object
    *
-   * @param $state
+   * @param $value
    * @return bool
    */
   public static function get_state($value) {
