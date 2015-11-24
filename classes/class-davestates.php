@@ -116,7 +116,7 @@ abstract class Davestates {
 
     if ($post->post_type == 'davestates_statemap') {
       $content = sprintf(
-        "<div class=\"entry-content\">
+        "<div class=\"entry-content davestates-map\">
             <div id=\"vmap\" class=\"map\" style=\"width: 600px; height: 400px;\"></div>
            </div>%s", $content
       );
@@ -144,7 +144,7 @@ abstract class Davestates {
 
     //$state = self::get_state($statename);
     //$statecode = $state;
-    $tableshtml = '';
+    $tableshtml = '<div id="davestates-tables">';
 
     if ($post->post_type == 'davestates_statemap') {
       $tables = self::get_tablepress_tables($postid);
@@ -152,12 +152,13 @@ abstract class Davestates {
         // DEBUG CODE BELOW
         //$table = TablePress::$controller->model_table->load($tid);
         //$data = print_r($table['data'],1);
-        $tablecode = sprintf("[table id=%s davestates-state='%s' /]", $tid, $statename);
-        $tableshtml = sprintf("%s<div class='entry-content'>
+        $tablecode = sprintf("[table id=%s davestates-state='%s' responsive='flip' /]", $tid, $statename);
+        $tableshtml = sprintf("%s<div class='entry-content davestates-table'>
                 %s
            </div>", $tableshtml, $tablecode);
       }
     }
+    $tableshtml.='</div>';
     $content = sprintf("%s %s", $content, $tableshtml);
     return $content;
   }
@@ -348,6 +349,9 @@ abstract class Davestates {
       $pattern = '/\{State\}/';
 
       $totals_rows = array();
+
+      $tablename = $table['name'];
+      $table['name'] = preg_replace($pattern, ucwords($state), $tablename);
 
       $last_row_key = count($rows) - 1;
       foreach ($rows as $key => $row) {
