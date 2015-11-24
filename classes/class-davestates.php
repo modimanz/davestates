@@ -44,7 +44,7 @@ abstract class Davestates {
     add_action('wp_enqueue_scripts', array(__Class__, "statemap_enqueue_scripts"));
 
     // Fix Javscript url for jvqmap
-    add_filter('clean_url', array(__Class__, 'clean_url_utf'));
+    //add_filter('clean_url', array(__Class__, 'clean_url_utf'));
 
     // Rewrite Rules
     add_filter('rewrite_rules_array', array(__Class__, 'statemap_rewrite_rules'));
@@ -438,17 +438,17 @@ abstract class Davestates {
     global $post;
     $dir = dirname(__FILE__);
     if (is_singular('davestates_statemap')) {
-      wp_register_style('statemap-style', plugin_dir_url($dir) . "css/statemap.css");
+      wp_register_style('statemap-style', plugin_dir_url($dir) . "css/statemap.css", array(), '1.1');
       wp_enqueue_style('statemap-style');
 
       wp_enqueue_script('jquery');
 
       // Load jvqmap Javascript
-      wp_register_script('statemap-vmap', plugin_dir_url($dir) . "js/jqvmap/jquery.vmap.js", array('jquery'));
+      wp_register_script('statemap-vmap', plugin_dir_url($dir) . "js/jqvmap/jquery.vmap.js", array('jquery'), '1.1');
       wp_enqueue_script('statemap-vmap');
 
       // Load jqvmap usa map javascript
-      wp_register_script('statemap-usa', plugin_dir_url($dir) . "js/jqvmap/maps/jquery.vmap.usa.js", array('jquery'));
+      wp_register_script('statemap-usa', plugin_dir_url($dir) . "js/jqvmap/maps/jquery.vmap.usa.js", array('jquery'), '1.1');
       wp_enqueue_script('statemap-usa');
 
       //
@@ -461,7 +461,7 @@ abstract class Davestates {
         $statecode = $state['statecode'];
       }
 
-      wp_register_script('davestates-statemap-script', plugin_dir_url($dir) . "js/statemap.js", array('jquery'));
+      wp_register_script('davestates-statemap-script', plugin_dir_url($dir) . "js/statemap.js", array('jquery'), '1.1');
       wp_localize_script('davestates-statemap-script', 'statemap_params', array(
         'hoverColor' => '#3300ff',
         'backgroundColor' => '#000000',
