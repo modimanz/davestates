@@ -6,7 +6,6 @@
  * Time: 8:54 AM
  */
 
-// TODO Create metabox to select Tablepress tables to link to Map
 // TODO Use meta fields to add the statemap settings
 
 // Modified Statemap Page to call Shortcodes for Table_Ids / State
@@ -38,26 +37,26 @@ abstract class Davestates {
     self::statemap_register_post_type();
 
     // Add Content filters
-    add_filter("the_content", array("Davestates", "statemap_content"));
-    add_filter("the_content", array("Davestates", "statemap_data_content"));
+    add_filter("the_content", array(__Class__, "statemap_content"));
+    add_filter("the_content", array(__Class__, "statemap_data_content"));
 
     // Enqueue scripts
-    add_action('wp_enqueue_scripts', array("Davestates", "statemap_enqueue_scripts"));
+    add_action('wp_enqueue_scripts', array(__Class__, "statemap_enqueue_scripts"));
 
     // Fix Javscript url for jvqmap
-    add_filter('clean_url', array('Davestates', 'clean_url_utf'));
+    add_filter('clean_url', array(__Class__, 'clean_url_utf'));
 
     // Rewrite Rules
-    add_filter('rewrite_rules_array', array('Davestates', 'statemap_rewrite_rules'));
-    add_filter('query_vars', array('Davestates','statemap_rewrite_query_vars'));
+    add_filter('rewrite_rules_array', array(__Class__, 'statemap_rewrite_rules'));
+    add_filter('query_vars', array(__Class__,'statemap_rewrite_query_vars'));
 
     // On Deactivate
-    //register_deactivation_hook(__FILE__, array('Davestates', 'deactivate'));
+    //register_deactivation_hook(__FILE__, array(__Class__, 'deactivate'));
 
-    add_action('add_meta_boxes', array('Davestates', 'statemap_meta_fields'));
-    add_action('save_post', array('Davestates', 'save_statemap_tableids'));
+    add_action('add_meta_boxes', array(__Class__, 'statemap_meta_fields'));
+    add_action('save_post', array(__Class__, 'save_statemap_tableids'));
 
-    //add_action('tablepress_run', array('Davestates', 'tablepress_init'));
+    //add_action('tablepress_run', array(__Class__, 'tablepress_init'));
     add_filter( 'tablepress_table_raw_render_data', array( __CLASS__, 'table_filter_rows' ), 10, 2 );
     add_filter( 'tablepress_shortcode_table_default_shortcode_atts', array( __CLASS__, 'shortcode_attributes' ) );
   }
@@ -138,7 +137,8 @@ abstract class Davestates {
   /**
    * Adds the States Data Page to the_content of the statemap so we don't need a template
    *
-  + * @param $content
+   * @param $content string
+   *
    * @return string
    */
   public static function statemap_data_content($content) {
@@ -197,10 +197,6 @@ abstract class Davestates {
     $selectedTableIds = isset($checkboxMeta['davestates_tableids']) ?
       unserialize($checkboxMeta['davestates_tableids'][0]) : array();
 
-    //if (!is_array($selectedTableIds)) $selectedTableIds = array();
-
-    //$tableids = get_post_meta($post->ID, '_tableids');
-
     $tables = self::get_tablepress_tables();
 
     foreach ($tables as $tableid => $tablename) {
@@ -247,11 +243,7 @@ abstract class Davestates {
         $stable = "davestates-table--" . sanitize_title_with_dashes($tablename);
         if (isset($_POST[$stable])) {
           $selected_tables[] = $tableid;
-          //update_post_meta($post_id, $stable, $tableid);
         }
-        //else {
-        //  update_post_meta($post_id, $stable, 0);
-        //}
       }
 
       update_post_meta($post_id, 'davestates_tableids', array_map('sanitize_text_field', $selected_tables));
@@ -263,11 +255,9 @@ abstract class Davestates {
   /**
    * Get all the table press tables
    *
-   * @param $postid integer
+   * @param $postid bool
    *
-   * TODO Filter Tables by Postid
-   *
-   * @return array
+   * @returns array
    */
   public static function get_tablepress_tables($postid = false) {
 
@@ -288,7 +278,7 @@ abstract class Davestates {
     // Cache the table function
     $tablesArr = wp_cache_get(sprintf('davestates_tables%s',$postidtag),'davestates');
 
-    //if ($tablesArr) return $tablesArr;
+    if ($tablesArr) return $tablesArr;
 
     $tables = TablePress::$controller->model_table->load_all();
 
@@ -297,7 +287,7 @@ abstract class Davestates {
     //print_r($selectedTableIds);
     foreach ($tables as $table_id ) {
       // If PostID is found then only load tables that are selected
-      if ($postid !== false) {
+      if ($postid !== false && isset($selectedTableIds)) {
        if (in_array($table_id, $selectedTableIds) === false) {
          continue;
        }
@@ -332,15 +322,17 @@ abstract class Davestates {
   public static function table_filter_rows($table, $render_options) {
 
     if (is_singular('davestates_statemap')) {
-      if (empty($render_options['davestates-state'])) {
-        return $table;
-      } elseif ($render_options['davestates-state'] == 'all') {
-        return $table;
-      }
+      //if (empty($render_options['davestates-state'])) {
+      //  return $table;
+      //} //elseif ($render_options['davestates-state'] == 'all') {
+        //return $table;
+      //}
 
+      $hidden_rows = array();
 
+      $state = (!empty($render_options['davestates-state'])) ?
+        $render_options['davestates-state'] : '';
 
-      $state = $render_options['davestates-state'];
       $state = preg_replace('/\-/', ' ', $state );
 
       //$states = explode( ',', $options['states']);
@@ -349,17 +341,35 @@ abstract class Davestates {
 
       $pattern = '/\{State\}/';
 
+      $totals_rows = array();
+
       $last_row_key = count($rows) - 1;
       foreach ($rows as $key => $row) {
 
         // Look through each $column for the {State} value and replace it
-        foreach( $row as $colKey => $column) {
-          $table['data'][$key][$colKey] = ucwords(preg_replace($pattern, $state , $column, 1));
+        foreach ($row as $colKey => $column) {
+          $table['data'][$key][$colKey] = ucwords(preg_replace($pattern, $state, $column, 1));
         }
 
         if (($key === 0 && $render_options['table_head']) ||
-          ($last_row_key === $key && $render_options['table_foot']) ||
-          (stripos($row[0], 'united states') !== false)) { // TODO Allow Data for USA or All as state
+          ($last_row_key === $key && $render_options['table_foot'])
+        ) continue;
+
+        if ((stripos($row[0], 'united states') !== false) ||
+            (stripos($row[0], 'nationwide') !== false )) {
+          // TODO Allow Data for USA or All as state)
+
+          if ($state == '') {
+            $state = $row[0];
+            // Look through each $column for the {State} value and replace it
+            foreach ($row as $colKey => $column) {
+              $table['data'][$key][$colKey] = ucwords(preg_replace($pattern, $state, $column, 1));
+            }
+          } else {
+            $totals_rows[] = $row;
+            $hidden_rows[] = $key;
+          }
+
           continue;
         }
 
@@ -371,6 +381,16 @@ abstract class Davestates {
         unset($table['data'][$key]);
         unset($table['visibility']['rows'][$key]);
       }
+
+      foreach ($totals_rows as $row) {
+        $new_row = array(count($row) - 1);
+        $new_row[1] = ucwords($row[0]);
+        $table['data'][] = $new_row;
+        $table['visibility']['rows'][] = true;
+        $table['data'][] = $row;
+        $table['visibility']['rows'][] = true;
+      }
+
 
       // Reset array keys.
       $table['data'] = array_merge($table['data']);
