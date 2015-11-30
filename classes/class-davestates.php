@@ -350,7 +350,7 @@ abstract class Davestates {
 
       $doTotals = false; // TODO get Total boolean from statemap settings
 
-      $pattern = '/\{State\}/';
+      $pattern = '/\{(\W*(?i)state(?-i)\W*)\}/';
 
       $totals_rows = array();
 
