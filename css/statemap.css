@@ -65,4 +65,7 @@
   #davestates-tables .tablepress-responsive-phone .column-1 {
     display: inherit;
   }
+  #davestates-tables .tablepress-responsive-phone .column-2 {
+    display: none;
+  }
 }

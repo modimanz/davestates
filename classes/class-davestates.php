@@ -43,6 +43,10 @@ abstract class Davestates {
     // Enqueue scripts
     add_action('wp_enqueue_scripts', array(__Class__, "statemap_enqueue_scripts"));
 
+    //add_action('wp_print_header_scripts', function() {
+      //if (wp_script_is())
+    //});
+
     // Fix Javscript url for jvqmap
     //add_filter('clean_url', array(__Class__, 'clean_url_utf'));
 
@@ -461,7 +465,7 @@ abstract class Davestates {
         $statecode = $state['statecode'];
       }
 
-      wp_register_script('davestates-statemap-script', plugin_dir_url($dir) . "js/statemap.js", array('jquery'), '1.1');
+      wp_register_script('davestates-statemap-script', plugin_dir_url($dir) . "js/statemap.js", array('jquery', 'statemap-usa', 'statemap-vmap'), '1.1', true);
       wp_localize_script('davestates-statemap-script', 'statemap_params', array(
         'hoverColor' => '#3300ff',
         'backgroundColor' => '#000000',
