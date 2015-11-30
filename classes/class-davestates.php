@@ -43,6 +43,13 @@ abstract class Davestates {
     // Enqueue scripts
     add_action('wp_enqueue_scripts', array(__Class__, "statemap_enqueue_scripts"));
 
+    // Fix scripts for rocketscript
+    if (!is_admin()) {
+      add_filter( 'clean_url', array(__CLASS__, 'rocket_loader_attributes_mark'), 11, 1);
+      add_filter('wp_print_scripts', array(__CLASS__, 'rocket_loader_attributes_start'));
+      add_filter('print_head_scripts', array(__CLASS__, 'rocket_loader_attributes_end'));
+    }
+
     //add_action('wp_print_header_scripts', function() {
       //if (wp_script_is())
     //});
@@ -436,6 +443,54 @@ abstract class Davestates {
   }
 
   /**
+   * Rocketscript Fix for Scripts
+   */
+  public static function rocket_loader_attributes_start() {
+    ob_start();
+  }
+
+  /**
+   * Rocketscript Fix for Scripts
+   */
+  public static function rocket_loader_attributes_end() {
+    $script_out = ob_get_clean();
+    $script_out = str_replace(
+      "type='text/javascript' src='{rocket-ignore}",
+      'data-cfasync="false"'." src='",
+      $script_out);
+    print $script_out;
+  }
+
+  /**
+   * Rocketscript Fix for Scripts
+   *
+   * @param $url
+   *
+   * @return string
+   */
+  public static function rocket_loader_attributes_mark($url) {
+    $dir = dirname(__FILE__);
+    $plugin_dir = plugin_dir_url($dir);
+    // Set up which scripts/strings to ignore
+    $ignore = array (
+      $plugin_dir.'js/jqvmap/jquery.vmap.js',
+      $plugin_dir.'js/jqvmap/maps/jquery.vmap.usa.js',
+      $plugin_dir.'js/statemap.js'
+    );
+    //matches only the script file name
+    preg_match('/(.*)\?/', $url, $_url);
+    if (isset($_url[1]) && substr($_url[1], -3)=='.js') {
+      foreach($ignore as $s) {
+        if (strpos($_url[1], $s)!==false)
+          return "{rocket-ignore}$url";
+      }
+      return "$url' data-cfasync='true";
+    }
+
+    return "$url";
+  }
+
+  /**
    * Load Script and Stylesheet for custom Post Type
    */
   public static function statemap_enqueue_scripts() {
@@ -465,7 +520,7 @@ abstract class Davestates {
         $statecode = $state['statecode'];
       }
 
-      wp_register_script('davestates-statemap-script', plugin_dir_url($dir) . "js/statemap.js", array('jquery', 'statemap-usa', 'statemap-vmap'), '1.1', true);
+      wp_register_script('davestates-statemap-script', plugin_dir_url($dir) . "js/statemap.js", array('jquery', 'statemap-usa', 'statemap-vmap'), '1.1', false);
       wp_localize_script('davestates-statemap-script', 'statemap_params', array(
         'hoverColor' => '#3300ff',
         'backgroundColor' => '#000000',
