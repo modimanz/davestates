@@ -128,9 +128,9 @@ abstract class Davestates {
 
     if ($post->post_type == 'davestates_statemap') {
       $content = sprintf(
-        "<div id=\"davestates-map\" class=\"entry-content davestates-map\">
+        "%s<div id=\"davestates-map\" class=\"entry-content davestates-map\">
             <div id=\"vmap\" class=\"map\" style=\"width: 600px; height: 400px;\"></div>
-           </div>%s", $content
+           </div>", $content
       );
     }
 
