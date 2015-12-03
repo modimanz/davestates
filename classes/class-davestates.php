@@ -90,6 +90,7 @@ abstract class Davestates {
         ),
         'public' => true,
         'show_ui' => true,
+        'menu_icon' => 'dashicons-location-alt',
         'show_in_menu' => true,
         'query_var' => true,
         'publicly_queryable' => true,
@@ -209,7 +210,7 @@ abstract class Davestates {
 
     foreach ($tables as $tableid => $tablename) {
 
-      $stable = "davestates-table--".sanitize_title_with_dashes($tablename);
+      $stable = "davestates-table--".$tableid.sanitize_title_with_dashes($tablename);
       $checked = in_array($tableid, $selectedTableIds) ? checked(true, true , false) : '';
       echo sprintf(
         '<input type="checkbox" name="%s" id="%s" value="%s" %s/>%s<br />',
@@ -248,7 +249,7 @@ abstract class Davestates {
       //get_post_me
       foreach ($tables as $tableid => $tablename) {
         //saves bob's value
-        $stable = "davestates-table--" . sanitize_title_with_dashes($tablename);
+        $stable = "davestates-table--".$tableid. sanitize_title_with_dashes($tablename);
         if (isset($_POST[$stable])) {
           $selected_tables[] = $tableid;
         }
@@ -346,10 +347,10 @@ abstract class Davestates {
       //return false;
       $hidden_rows = array();
 
-      $state = (!empty($render_options['davestates-state'])) ?
+      $statename = (!empty($render_options['davestates-state'])) ?
         $render_options['davestates-state'] : 'xxx';
 
-      $state = preg_replace('/\-/', ' ', $state );
+      $statename = preg_replace('/\-/', ' ', $statename );
 
       //$states = explode( ',', $options['states']);
 
@@ -362,14 +363,14 @@ abstract class Davestates {
       $totals_rows = array();
 
       $tablename = $table['name'];
-      $table['name'] = preg_replace($pattern, ucwords($state), $tablename);
+      $table['name'] = preg_replace($pattern, ucwords($statename), $tablename);
 
       $last_row_key = count($rows) - 1;
       foreach ($rows as $key => $row) {
 
         // Look through each $column for the {State} value and replace it
         foreach ($row as $colKey => $column) {
-          $table['data'][$key][$colKey] = ucwords(preg_replace($pattern, $state, $column, 1));
+          $table['data'][$key][$colKey] = ucwords(preg_replace($pattern, $statename, $column, 1));
         }
 
         if (($key === 0 && $render_options['table_head']) ||
@@ -398,7 +399,7 @@ abstract class Davestates {
           continue;
         }
 
-        if (stripos($row[0], $state) === false) {
+        if (stripos($row[0], $statename) === false) {
           $hidden_rows[] = $key;
         }
       }
@@ -408,6 +409,11 @@ abstract class Davestates {
       }
 
       if ($doTotals) {
+        if ($render_options['table_foot']) {
+          // Remove last item from table and apply after totals
+          $last_row = array_pop($table['data']);
+          $last_vis = array_pop($table['visibility']['rows']);
+        }
         foreach ($totals_rows as $row) {
           $new_row = array(count($row) - 1);
           $new_row[1] = ucwords($row[0]);
@@ -416,6 +422,13 @@ abstract class Davestates {
           $table['data'][] = $row;
           $table['visibility']['rows'][] = true;
         }
+
+        if ($render_options['table_foot']) {
+          // Remove last item from table and apply after totals
+          $table['data'][] = $last_row;
+          $table['visibility']['rows'][] = $last_vis;
+        }
+
       }
 
 
@@ -473,6 +486,7 @@ abstract class Davestates {
     $plugin_dir = plugin_dir_url($dir);
     // Set up which scripts/strings to ignore
     $ignore = array (
+      '/wp-includes/js/jquery/jquery.js',
       $plugin_dir.'js/jqvmap/jquery.vmap.js',
       $plugin_dir.'js/jqvmap/maps/jquery.vmap.usa.js',
       $plugin_dir.'js/statemap.js'
@@ -495,19 +509,21 @@ abstract class Davestates {
    */
   public static function statemap_enqueue_scripts() {
     global $post;
+    global $post_type;
     $dir = dirname(__FILE__);
-    if (is_singular('davestates_statemap')) {
-      wp_register_style('statemap-style', plugin_dir_url($dir) . "css/statemap.css", array(), '1.1');
+    //if (is_singular('davestates_statemap')) {
+    if ($post_type == 'davestates_statemap') {
+      wp_register_style('statemap-style', plugins_url("css/statemap.css", $dir), false, '1.2');
       wp_enqueue_style('statemap-style');
 
       wp_enqueue_script('jquery');
 
       // Load jvqmap Javascript
-      wp_register_script('statemap-vmap', plugin_dir_url($dir) . "js/jqvmap/jquery.vmap.js", array('jquery'), '1.1');
+      wp_register_script('statemap-vmap', plugins_url("js/jqvmap/jquery.vmap.js", $dir), array('jquery'), '1.2');
       wp_enqueue_script('statemap-vmap');
 
       // Load jqvmap usa map javascript
-      wp_register_script('statemap-usa', plugin_dir_url($dir) . "js/jqvmap/maps/jquery.vmap.usa.js", array('jquery'), '1.1');
+      wp_register_script('statemap-usa', plugins_url("js/jqvmap/maps/jquery.vmap.usa.js", $dir), array('jquery'), '1.2');
       wp_enqueue_script('statemap-usa');
 
       //
@@ -520,7 +536,7 @@ abstract class Davestates {
         $statecode = $state['statecode'];
       }
 
-      wp_register_script('davestates-statemap-script', plugin_dir_url($dir) . "js/statemap.js", array('jquery', 'statemap-usa', 'statemap-vmap'), '1.1', false);
+      wp_register_script('davestates-statemap-script', plugins_url("js/statemap.js", $dir), array('jquery', 'statemap-usa', 'statemap-vmap'), '1.1', false);
       wp_localize_script('davestates-statemap-script', 'statemap_params', array(
         'hoverColor' => '#3300ff',
         'backgroundColor' => '#000000',

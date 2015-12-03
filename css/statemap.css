@@ -65,7 +65,21 @@
   #davestates-tables .tablepress-responsive-phone .column-1 {
     display: inherit;
   }
-  #davestates-tables .tablepress-responsive-phone .column-2 {
+  /*#davestates-tables .tablepress-responsive-phone .column-2 {
     display: none;
+  }*/
+
+  #davestates-tables .tablepress-reponsive-phone td {
+    line-height: 1.5;
   }
+}
+
+@media
+only screen and (max-width:760px),
+(min-device-width: 768px) and (max-device-width: 1024px){
+
+}
+
+.single-davestates_statemap H1 {
+
 }

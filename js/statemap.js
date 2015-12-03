@@ -1,9 +1,12 @@
 jQuery(document).ready(function () {
     //alert(statemap_params.hoverColor);
 
-    url = statemap_params.statemapUrl;
+    url = (typeof statemap_params.statemapUrl === 'undefined') ? '' : statemap_params.statemapUrl;
     statecode = (typeof statemap_params.statecode === 'undefined') ? '' : statemap_params.statecode;
 
+    if (url == '') {
+        alert('Oooh no URL');
+    }
     //alert(url);
     if (statecode.length != 2) {
         statecode = [];
