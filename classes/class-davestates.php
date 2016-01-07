@@ -566,7 +566,9 @@ abstract class Davestates {
 
     $postType = get_post_type();
 
-    error_log(sprintf('Here is the Post Type - %s', $postType));
+    //error_log(sprintf('Here is the Post Type - %s', $postType));
+
+    error_log("TABLE".print_r($table,1));
 
     if ($postType == 'davestates_statemap') {
     //if (is_singular('davestates_statemap')) {
@@ -596,6 +598,8 @@ abstract class Davestates {
 
       $tablename = $table['name'];
       $table['name'] = preg_replace($pattern, ucwords($statename), $tablename);
+      $description = $table['description'];
+      $table['description'] = preg_replace($pattern, ucwords($statename), $description);
 
       $last_row_key = count($rows) - 1;
       foreach ($rows as $key => $row) {

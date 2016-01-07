@@ -23,7 +23,7 @@ jQuery(document).ready(function ($) {
     for (var property in hoverColors) {
         output += property + ': ' + hoverColors[property]+'; ';
     }
-    alert(output);
+    //alert(output);
 
     function doStateMap() {
         $('#vmap').vectorMap({
