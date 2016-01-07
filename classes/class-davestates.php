@@ -41,14 +41,14 @@ abstract class Davestates {
     add_filter("the_content", array(__Class__, "statemap_data_content"));
 
     // Enqueue scripts
-    add_action('wp_enqueue_scripts', array(__Class__, "statemap_enqueue_scripts"));
+    add_action('wp_enqueue_scripts', array(__Class__, "statemap_enqueue_scripts"), 101);
 
     // Fix scripts for rocketscript
-    if (!is_admin()) {
-      add_filter( 'clean_url', array(__CLASS__, 'rocket_loader_attributes_mark'), 11, 1);
-      add_filter('wp_print_scripts', array(__CLASS__, 'rocket_loader_attributes_start'));
-      add_filter('print_head_scripts', array(__CLASS__, 'rocket_loader_attributes_end'));
-    }
+    //if (!is_admin()) {
+    //  add_filter( 'clean_url', array(__CLASS__, 'rocket_loader_attributes_mark'), 11, 1);
+    //  add_filter('wp_print_scripts', array(__CLASS__, 'rocket_loader_attributes_start'));
+    //  add_filter('print_head_scripts', array(__CLASS__, 'rocket_loader_attributes_end'));
+    //}
 
     //add_action('wp_print_header_scripts', function() {
       //if (wp_script_is())
@@ -56,6 +56,10 @@ abstract class Davestates {
 
     // Fix Javscript url for jvqmap
     //add_filter('clean_url', array(__Class__, 'clean_url_utf'));
+
+    add_action('admin_print_scripts', array(__Class__, 'admin_print_scripts'));
+    add_action('admin_print_styles', array(__Class__, 'admin_print_styles'));
+
 
     // Rewrite Rules
     add_filter('rewrite_rules_array', array(__Class__, 'statemap_rewrite_rules'));
@@ -65,7 +69,7 @@ abstract class Davestates {
     //register_deactivation_hook(__FILE__, array(__Class__, 'deactivate'));
 
     add_action('add_meta_boxes', array(__Class__, 'statemap_meta_fields'));
-    add_action('save_post', array(__Class__, 'save_statemap_tableids'));
+    add_action('save_post', array(__Class__, 'save_statemap_meta_fields'));
 
     //add_action('tablepress_run', array(__Class__, 'tablepress_init'));
     add_filter( 'tablepress_table_raw_render_data', array( __CLASS__, 'table_filter_rows' ), 10, 2 );
@@ -91,6 +95,7 @@ abstract class Davestates {
         'public' => true,
         'show_ui' => true,
         'menu_icon' => 'dashicons-location-alt',
+        'taxonomies' => array('category'),
         'show_in_menu' => true,
         'query_var' => true,
         'publicly_queryable' => true,
@@ -127,12 +132,22 @@ abstract class Davestates {
     global $post;
 
     if ($post->post_type == 'davestates_statemap') {
-      $content = sprintf(
+
+      $img_id = get_post_meta($post->ID, 'davestates_statemap_background_image', true);
+      if ($img_id) {
+        $img_src = wp_get_attachment_url($img_id);
+      } else {
+        $img_src = '';
+      }
+      $content = sprintf("<style>#vmap {background-image:url(\"%s\");}</style>", $img_id);
+      $content.= sprintf(
         "%s<div id=\"davestates-map\" class=\"entry-content davestates-map\">
             <div id=\"vmap\" class=\"map\" style=\"width: 600px; height: 400px;\"></div>
-           </div>", $content
+           </div>", $img_src, $content
       );
     }
+
+
 
     return $content;
   }
@@ -152,7 +167,12 @@ abstract class Davestates {
 
     if ($statename == '') $statename = 'United States';
 
-    error_log(sprintf('%s - statename -> %s', __FUNCTION__, $statename));
+    //error_log(sprintf('%s - statename -> %s', __FUNCTION__, $statename));
+
+    $metaFields = get_post_meta($post->ID);
+
+    $selectedTableIds = isset($metaFields['davestates_tableids']) ?
+      unserialize($metaFields['davestates_tableids'][0]) : array();
 
     //$state = self::get_state($statename);
     //$statecode = $state;
@@ -164,7 +184,11 @@ abstract class Davestates {
         // DEBUG CODE BELOW
         //$table = TablePress::$controller->model_table->load($tid);
         //$data = print_r($table['data'],1);
-        $tablecode = sprintf("[table id=%s davestates-state='%s' responsive='flip' /]", $tid, $statename);
+
+        $use_responsive = (isset($selectedTableIds[$tid]['responsive'])) ? $selectedTableIds[$tid]['responsive'] : true;
+
+        $flip = ($use_responsive == '1') ? "" : "responsive='flip'";
+        $tablecode = sprintf("[table id=%s davestates-state='%s' %s /]", $tid, $statename, $flip);
         $tableshtml = sprintf("%s<div class='entry-content davestates-table'>
                 %s
            </div>", $tableshtml, $tablecode);
@@ -172,7 +196,90 @@ abstract class Davestates {
     }
     $tableshtml.='</div>';
     $content = sprintf("%s %s", $content, $tableshtml);
+
+    $footer = get_post_meta($post->ID, 'davestates_statemap_footer', true);
+
+    if ($footer) {
+      $content.=$footer;
+    }
+
     return $content;
+  }
+
+  public static function save_statemap_meta_fields($post_id) {
+    global $post;
+
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
+      return;
+    }
+    // Quick exit if not statemap post type
+    if ((isset ($_POST['post_type'])) && ('davestates_statemap' == $_POST['post_type'])) {
+      // Verify Nonce
+      // Verify Post Type
+      if (!current_user_can('edit_post', $post_id)) {
+        return;
+      }
+    }
+
+    // Update Footer
+    $nonceName = 'davestates_statemap_meta_footer';
+    if (wp_verify_nonce($_POST[$nonceName], "save")) {
+      update_post_meta($post_id, 'davestates_statemap_footer', $_POST['davestates_statemap_footer']);
+    }
+
+    // Update Table IDS
+    $nonceName = 'davestates_statemap_meta_tableids';
+    if (wp_verify_nonce($_POST[$nonceName], "save")) {
+      $tables = self::get_tablepress_tables();
+      $selected_tables = array();
+      //get_post_me
+      foreach ($tables as $tableid => $tablename) {
+        //saves bob's value
+        if ($tableid == 0) continue;
+        $stable = "davestates-table-" . $tableid;
+        $weight_field = $stable . '--weight';
+        $responsive_field = $stable . '--responsive';
+        if (isset($_POST[$stable])) {
+          // Get responsive
+          $responsive = (isset($_POST[$responsive_field])) ? (int) $_POST[$responsive_field] : false;
+
+          // Weight will equal value from field or be false
+          $weight = (isset($_POST[$weight_field])) ? (int) $_POST[$weight_field] : false;
+
+          $selected_tables[$tableid] = array(
+            'weight' => $weight,
+            'responsive' => $responsive
+          );
+        }
+      }
+
+      // Make sure array is sorted by weight
+      // Obtain a list of columns
+      foreach ($selected_tables as $key => $row) {
+        $weight_arr[$key] = $row['weight'];
+        $responsive_arr[$key] = $row['responsive'];
+      }
+      $selected_keys = array_keys($selected_tables);
+      // Sort the data with weight ascending and responsive descending
+      // Add $data as the last parameter, to sort by the common key
+      array_multisort($weight_arr, SORT_ASC, SORT_NUMERIC,
+        $responsive_arr, SORT_DESC, SORT_NUMERIC,
+        $selected_tables,
+        $selected_keys);
+      $selected_tables = array_combine($selected_keys, $selected_tables);
+
+      // Update the post meta data
+      update_post_meta($post_id, 'davestates_tableids', $selected_tables);
+
+      // Delete table cache of post
+      Davestates::delete_post_cache(sprintf('davestates_tables%s', $post_id));
+    }
+
+    $nonceName = 'davestates_statemap_meta_background_image';
+    if (wp_verify_nonce($_POST[$nonceName], "save")) {
+      update_post_meta($post_id, 'davestates_statemap_background_image', $_POST['upload_statemap_image']);
+    }
+
   }
 
   /**
@@ -187,19 +294,72 @@ abstract class Davestates {
       'normal',
       'default'
     );
+
+    add_meta_box(
+      'davestates_statemap_background_image',
+      "Statemap Background Image",
+      array(__CLASS__, 'metabox_statemap_background_image'),
+      'davestates_statemap',
+      'normal',
+      'default'
+    );
+
+    add_meta_box(
+      'davestates_statemap_footer',
+      "Statemap Footer",
+      array(__Class__, 'metabox_statemap_footer'),
+      'davestates_statemap',
+      'normal',
+      'default'
+    );
   }
+
+  /**
+   *
+   */
+  public static function metabox_statemap_background_image() {
+    global $post;
+    $nonceName = 'davestates_statemap_meta_background_image';
+    wp_nonce_field('save', $nonceName);
+
+    //$img_src = '';
+    $img_id = get_post_meta($post->ID, 'davestates_statemap_background_image', true);
+    //$img_src = wp_get_attachment_url( $img_id );
+
+    ?>
+
+    <label for="upload_statemap_image">
+      <input id="upload_statemap_image" type="text" size="36" name="upload_statemap_image" value="<?php echo $img_id; ?>" />
+      <input id="upload_statemap_image_button" type="button" value="Upload Image" />
+      <br />Enter an URL or upload an image for the banner.
+    </label>
+    <?php
+
+  }
+
+
+  public static function metabox_statemap_footer() {
+    global $post;
+
+    $nonceName = "davestates_statemap_meta_footer";
+    wp_nonce_field('save', $nonceName);
+
+    $statemap_footer = get_post_meta($post->ID, 'davestates_statemap_footer', true);
+
+    echo "<div id=\"poststuff\">";
+    wp_editor($statemap_footer,'davestates_statemap_footer');
+    echo "</div>";
+  }
+
 
   /**
    * Create Statemap Post Specific Settings / Meta Fields
    */
-  public static function metabox_statemap_tableids() {
+  public static function metabox_statemap_tableids($post_id) {
     global $post;
 
-    echo '<input type="hidden" name="davestates_statemap_meta_noncename"'.
-    ' id="davestates_statemap_meta_noncename" value="' .
-      wp_create_nonce(DAVESTATES_BASENAME). '" />';
-
-    wp_nonce_field('davestates_statemap_meta_action', 'davestates_statesmap_meta_field');
+    $nonceName = "davestates_statemap_meta_tableids";
+    wp_nonce_field('save', $nonceName);
 
     $checkboxMeta = get_post_meta($post->ID);
 
@@ -207,59 +367,53 @@ abstract class Davestates {
       unserialize($checkboxMeta['davestates_tableids'][0]) : array();
 
     $tables = self::get_tablepress_tables();
+    //echo print_r($tables, 1);
+    // Create HTML table to output Tablepress table selectors and weights
+    echo print_r($selectedTableIds, 1);
+    echo '<table class="davestates-table-settings">';
+    echo '<tbody>';
+    echo '<tr><th>Table</th><th>Weight</th><th>Responsive?</th></tr>';
+
 
     foreach ($tables as $tableid => $tablename) {
-
-      $stable = "davestates-table--".$tableid.sanitize_title_with_dashes($tablename);
-      $checked = in_array($tableid, $selectedTableIds) ? checked(true, true , false) : '';
+      echo '<tr>';
+      $stable = "davestates-table-".$tableid;
+      $checked = array_key_exists($tableid, $selectedTableIds) ? checked(true, true , false) : '';
       echo sprintf(
-        '<input type="checkbox" name="%s" id="%s" value="%s" %s/>%s<br />',
+        '<td><input type="checkbox" name="%s" id="%s" value="%s" %s/>%s</td>',
         $stable,
         $stable,
         $tableid,
         $checked,
-        $tablename.print_r($selectedTableIds, 1));
+        $tablename);
+
+      $weight_field = $stable."--weight";
+      $weight = (isset($selectedTableIds[$tableid]['weight'])) ? $selectedTableIds[$tableid]['weight'] : 100;
+
+      echo sprintf(
+        '<td><input type="text" class="davestates-weight" title="Lower Values are listed first on state map" name="%s" id="%s" value="%s"/></td>',
+        $weight_field,
+        $weight_field,
+        $weight);
+
+      $responsive_field = $stable."--responsive";
+      $use_responsive = (isset($selectedTableIds[$tableid]['responsive'])) ? $selectedTableIds[$tableid]['responsive'] : true;
+      $checked = checked($use_responsive, true , false);
+      echo sprintf(
+        '<td><input type="checkbox" name="%s" id="%s" value="%s" %s/>%s</td>',
+        $responsive_field,
+        $responsive_field,
+        '1',
+        $checked,
+        'Use Responsive Table?'
+      );
+
+      echo '</tr>';
     }
+    echo '</tbody>';
+    echo '</table>';
   }
 
-  /**
-   * Save the Statemap Meta Data
-   *
-   * @param $post_id
-   */
-  public static function save_statemap_tableids( $post_id) {
-    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE )
-      return;
-    if ( ( isset ( $_POST['davestates_statemap_meta_action'] ) ) && ( ! wp_verify_nonce( $_POST['davestates_statesmap_meta_field\''], plugin_basename( __FILE__ ) ) ) )
-      return;
-    if ( ( isset ( $_POST['post_type'] ) ) && ( 'davestates_statemap' == $_POST['post_type'] )  ) {
-      if ( ! current_user_can( 'edit_page', $post_id ) ) {
-        return;
-      }
-    } else {
-      if ( ! current_user_can( 'edit_post', $post_id ) ) {
-        return;
-      }
-    }
-
-    if ( ( isset ( $_POST['post_type'] ) ) && ( 'davestates_statemap' == $_POST['post_type'] )  ) {
-      $tables = self::get_tablepress_tables();
-
-      $selected_tables = array();
-      //get_post_me
-      foreach ($tables as $tableid => $tablename) {
-        //saves bob's value
-        $stable = "davestates-table--".$tableid. sanitize_title_with_dashes($tablename);
-        if (isset($_POST[$stable])) {
-          $selected_tables[] = $tableid;
-        }
-      }
-
-      update_post_meta($post_id, 'davestates_tableids', array_map('sanitize_text_field', $selected_tables));
-
-      wp_cache_delete(sprintf('davestates_tables%s',$post_id),'davestates');
-    }
-  }
 
   /**
    * Get all the table press tables
@@ -281,33 +435,29 @@ abstract class Davestates {
       //  unserialize($checkboxMeta['davestates_tableid'][0]) : array();
 
       if ( in_array('davestates_tableids', get_post_custom_keys($postid))) {
-        $selectedTableIds = get_post_meta($postid, 'davestates_tableids');
-        $selectedTableIds = reset($selectedTableIds);
+        $selectedTableIds = get_post_meta($postid, 'davestates_tableids', true);
       }
     }
 
-    // Cache the table function
+    // Get the Cache if it exists
     $tablesArr = wp_cache_get(sprintf('davestates_tables%s',$postidtag),'davestates');
-
     if ($tablesArr) return $tablesArr;
 
-    $tables = TablePress::$controller->model_table->load_all();
+    // If Selected Table Ids we don't need to load tables we already know ids
+    $tables = (isset($selectedTableIds)) ? array_keys($selectedTableIds) : TablePress::$controller->model_table->load_all();
 
     $tablesArr = array();
-    //echo $postid.$selectedTableIds;
-    //print_r($selectedTableIds);
     foreach ($tables as $table_id ) {
       // If PostID is found then only load tables that are selected
-      if ($postid !== false && isset($selectedTableIds)) {
-       if (in_array($table_id, $selectedTableIds) === false) {
-         continue;
-       }
-      }
+      //if ($postid !== false && isset($selectedTableIds)) {
+      // if (array_key_exists($table_id, $selectedTableIds) === false) {
+      //   continue;
+      // }
+      //}
 
       // Load each wordpress table
       $table = TablePress::$controller->model_table->load($table_id);
       // Get the name of each table and it's ID as an array to return
-
       $stateheader = $table['data'][0][0];
 
       // filter to only show tables with a column 1 name = State
@@ -316,8 +466,39 @@ abstract class Davestates {
       }
     }
 
+    if (isset($selectedTableIds)) {
+      // Sort the tablesArr by the $selectedTableIds[table-id][weight] ascending
+      foreach ($selectedTableIds as $key => $row) {
+        $tableOrder[$key] = $tablesArr[$key];
+      }
+      $tablesSorted = array_merge($tableOrder, $tablesArr);
+    } else {
+      $tablesSorted = $tablesArr;
+    }
+    // Cache this function
     wp_cache_add(sprintf('davestates_tables%s', $postidtag), 'davestates', 300);
-    return $tablesArr;
+    return $tablesSorted;
+  }
+
+  public static function admin_print_scripts() {
+    $postType = get_post_type();
+
+    if ($postType == 'davestates_statemap') {
+      wp_enqueue_script('wp_editor');
+      wp_enqueue_script('thickbox');
+      wp_enqueue_script('media-upload');
+      wp_register_script('statemap-upload', plugins_url("js/statemap-admin.js", DAVESTATES__FILE__), array('jquery', 'media-upload', 'thickbox'), "1.1", true);
+      wp_enqueue_script('statemap-upload');
+      //add_action('admin_head', 'wp_tiny_mce');
+    }
+  }
+
+  public static function admin_print_styles() {
+    $postType = get_post_type();
+
+    if ($postType == 'davestates_statemap') {
+      wp_enqueue_style('thickbox');
+    }
   }
 
   /**
@@ -377,8 +558,9 @@ abstract class Davestates {
           ($last_row_key === $key && $render_options['table_foot'])
         ) continue;
 
-        if ((stripos($row[0], 'united states') !== false) ||
-            (stripos($row[0], 'nationwide') !== false )) {
+        if ((stripos($row[0], 'united states') === 0) ||
+            (stripos($row[0], 'nationwide') === 0 ) ||
+            (stripos($row[0], 'usa') === 0 )){
           // TODO Allow Data for USA or All as state)
 
 
@@ -399,7 +581,7 @@ abstract class Davestates {
           continue;
         }
 
-        if (stripos($row[0], $statename) === false) {
+        if (stripos($row[0], $statename) !== 0) {
           $hidden_rows[] = $key;
         }
       }
@@ -510,20 +692,20 @@ abstract class Davestates {
   public static function statemap_enqueue_scripts() {
     global $post;
     global $post_type;
-    $dir = dirname(__FILE__);
+    //$dir = dirname(__FILE__);
     //if (is_singular('davestates_statemap')) {
     if ($post_type == 'davestates_statemap') {
-      wp_register_style('statemap-style', plugins_url("css/statemap.css", $dir), false, '1.2');
+      wp_register_style('statemap-style', plugins_url("css/statemap.css", DAVESTATES__FILE__), false, '1.4', true);
       wp_enqueue_style('statemap-style');
 
       wp_enqueue_script('jquery');
 
       // Load jvqmap Javascript
-      wp_register_script('statemap-vmap', plugins_url("js/jqvmap/jquery.vmap.js", $dir), array('jquery'), '1.2');
+      wp_register_script('statemap-vmap', plugins_url("js/jqvmap/jquery.vmap.js", DAVESTATES__FILE__), array('jquery'), '1.4', true);
       wp_enqueue_script('statemap-vmap');
 
       // Load jqvmap usa map javascript
-      wp_register_script('statemap-usa', plugins_url("js/jqvmap/maps/jquery.vmap.usa.js", $dir), array('jquery'), '1.2');
+      wp_register_script('statemap-usa', plugins_url("js/jqvmap/maps/jquery.vmap.usa.js", DAVESTATES__FILE__), array('jquery', 'statemap-vmap'), '1.4', true);
       wp_enqueue_script('statemap-usa');
 
       //
@@ -536,7 +718,7 @@ abstract class Davestates {
         $statecode = $state['statecode'];
       }
 
-      wp_register_script('davestates-statemap-script', plugins_url("js/statemap.js", $dir), array('jquery', 'statemap-usa', 'statemap-vmap'), '1.1', false);
+      wp_register_script('davestates-statemap-script', plugins_url("js/statemap.js", DAVESTATES__FILE__), array('jquery', 'statemap-usa', 'statemap-vmap'), '1.4', true);
       wp_localize_script('davestates-statemap-script', 'statemap_params', array(
         'hoverColor' => '#3300ff',
         'backgroundColor' => '#000000',
@@ -546,6 +728,12 @@ abstract class Davestates {
       ));
       wp_enqueue_script('davestates-statemap-script');
     }
+  }
+
+
+  public static function delete_post_cache($key){
+    // Delete Cache for this tables/post
+    wp_cache_delete(sprintf($key),'davestates');
   }
 
   /**

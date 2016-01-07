@@ -83,3 +83,100 @@ only screen and (max-width:760px),
 .single-davestates_statemap H1 {
 
 }
+
+
+/* For devices smaller than 768 width */
+@media (max-width:767px) {
+  #davestates-tables .tablepress-responsive-phone .column-1 {
+    display: inherit;
+    font-weight: 900;
+    font-variant: small-caps;
+    background:black;
+    padding:1px;
+    Font-family: 'Raleway',  sans-serif;
+  }
+
+  #davestates-tables .dataTables_wrapper {
+    display: table;
+  }
+
+  #davestates-tables .dataTables_scroll {
+    width: 100%;
+    display: table-row;
+  }
+
+  #davestates-tables .dataTables_scroll .dataTables_scrollHead{
+    display: table-cell !important;
+    white-space: nowrap;
+    overflow: hidden;
+    vertical-align:top;
+    text-align:center;
+    width: 10% !important;
+  }
+
+  #davestates-tables .dataTables_scroll .dataTables_scrollHead th br{
+    display: none;
+  }
+
+  #davestates-tables .dataTables_scroll .dataTables_scrollHead .dataTables_scrollHeadInner{
+    width:auto !important;
+  }
+
+  #davestates-tables .dataTables_scroll .dataTables_scrollBody{
+    display: table-cell !important;
+    white-space: nowrap;
+    vertical-align: top;
+    width: 90% !important;
+  }
+
+  #davestates-tables .dataTables_scroll .dataTables_scrollHead table{
+    width:100% !important;
+  }
+
+  #davestates-tables .dataTables_scroll .dataTables_scrollBody table {
+    width:100% !important;
+  }
+
+  #davestates-tables .tablepress-responsive-phone tbody tr {
+    width: 50%;
+  }
+
+  #davestates-tables .table>thead>tr>th,
+  #davestates-tables .table>tbody>tr>th,
+  #davestates-tables .table>tfoot>tr>th,
+  #davestates-tables .table>thead>tr>td,
+  #davestates-tables .table>tbody>tr>td,
+  #davestates-tables .table>tfoot>tr>td {
+    line-height: 29px;
+    font-size:.6em;
+    padding: 6px;
+    width:100%;
+    white-space: nowrap;
+    text-align: center;
+    border-bottom:1px solid white;
+    font-family: 'Raleway',  sans-serif;
+
+  }
+
+  #davestates-tables .table>thead>tr>th,
+  #davestates-tables .table>tbody>tr>th,
+  #davestates-tables .table>tfoot>tr>th {
+    letter-spacing: -1px;
+  }
+
+  #davestates-tables .table>thead>tr.odd>td,
+  #davestates-tables .table>tbody>tr.odd>td,
+  #davestates-tables .table>tfoot>tr.odd>td {
+    /*line-height: 28px;*/
+    border-top: none;
+    width: 100%;
+  }
+
+  #davestates-tables .tablepress-responsive-phone thead {
+    float: none !important;
+  }
+
+  #davestates-tables .dataTables_scroll table tbody td{
+    padding: 6px;
+  }
+}
