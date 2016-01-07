@@ -16,6 +16,15 @@ jQuery(document).ready(function ($) {
         //alert('test');
     }
 
+    var hoverColors = statemap_params.hoverColors;
+
+
+    var output = '';
+    for (var property in hoverColors) {
+        output += property + ': ' + hoverColors[property]+'; ';
+    }
+    alert(output);
+
     function doStateMap() {
         $('#vmap').vectorMap({
             map: 'usa_en',
@@ -27,7 +36,7 @@ jQuery(document).ready(function ($) {
             normalizeFunction: 'linear',
             color: 'transparent',
             hoverColor: '#3300ff',
-            hoverColors: {
+            hoverColors: hoverColors,/*{
                 al: "#b80000",
                 ak: "#b80000",
                 az: "#b80000",
@@ -78,7 +87,7 @@ jQuery(document).ready(function ($) {
                 wv: "#191175",
                 wi: "#191175",
                 wy: "#191175"
-            },
+            },*/
             selectedColor: '#0033ff',
             showTooltip: true,
             selectedRegions: statecode,
