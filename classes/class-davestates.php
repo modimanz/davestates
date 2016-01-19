@@ -140,15 +140,12 @@ abstract class Davestates {
       } else {
         $img_src = '';
       }
-      $content = sprintf("<style>#vmap {background-image:url(\"%s\");background-size:cover;}</style>", $img_id);
-      $content.= sprintf(
-        "%s<div id=\"davestates-map\" class=\"entry-content davestates-map\">
-            <div id=\"vmap\" class=\"map\" style=\"width: 600px; height: 400px;\"></div>
-           </div>", $img_src, $content
+      $content = sprintf("<style>#vmap {background-image:url(\"%s\");background-size:cover;}</style>" .
+        "%s<div id=\"davestates-map\" class=\"entry-content davestates-map\">" .
+        "    <div id=\"vmap\" class=\"map\" style=\"width: 600px; height: 400px;\"></div>" .
+        "   </div>", $img_src, $content
       );
     }
-
-
 
     return $content;
   }
@@ -193,9 +190,9 @@ abstract class Davestates {
       }
     }
     $tableshtml.='</div>';
-    $content = sprintf("%s %s", $content, $tableshtml);
+    $content = sprintf("%s %s %s", $content, $tableshtml, Davestates::footer());
 
-    $content.=Davestates::footer();
+    //$content.=Davestates::footer();
 
     return $content;
   }
@@ -495,12 +492,6 @@ abstract class Davestates {
 
     $tablesArr = array();
     foreach ($tables as $table_id ) {
-      // If PostID is found then only load tables that are selected
-      //if ($postid !== false && isset($selectedTableIds)) {
-      // if (array_key_exists($table_id, $selectedTableIds) === false) {
-      //   continue;
-      // }
-      //}
 
       // Load each wordpress table
       $table = TablePress::$controller->model_table->load($table_id);
@@ -513,24 +504,14 @@ abstract class Davestates {
       }
     }
 
-    if (isset($selectedTableIds)) {
-      // Sort the tablesArr by the $selectedTableIds[table-id][weight] ascending
-      foreach ($selectedTableIds as $key => $row) {
-        $tableOrder[$key] = $tablesArr[$key];
-      }
-      $tablesSorted = $tableOrder + $tablesArr;
-    } else {
-      $tablesSorted = $tablesArr;
-    }
     // Cache this function
-    wp_cache_add(sprintf('davestates_tables%s', $postidtag), 'davestates', 300);
-    return $tablesSorted;
+    wp_cache_add(sprintf('davestates_tables%s', $postidtag), $tablesArr, 'davestates', 300);
+    return $tablesArr;
   }
 
   public static function admin_print_scripts() {
     global $post;
     $postType = get_post_type();
-
 
     if ($postType == 'davestates_statemap') {
       wp_enqueue_script('wp_editor');
