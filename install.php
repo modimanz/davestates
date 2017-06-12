@@ -8,7 +8,11 @@ defined( 'ABSPATH' ) or die( 'Action not allowed bub.' );
 global $davestates_db_version;
 $davestates_db_version = '1.2';
 
-
+/**
+ * Install Davestates Plugin
+ *
+ * TODO Be nice; lets make an uninstall function; Drop Tables; Ask while uninstallling
+ */
 function davestates_install() {
   global $wpdb;
   global $davestates_db_version;
